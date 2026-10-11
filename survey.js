@@ -32,8 +32,8 @@
       en: 'We are researchers studying how people in Singapore walk on hot days, and how shade facilities (arcades / five-foot ways, covered linkways, covered overhead bridges and inter-building corridors) and trees affect which way they go.',
       zh: '我们正在研究新加坡居民在炎热天气中的步行方式，以及骑楼（五脚基）、有顶连廊、有顶人行天桥、楼间连廊等遮荫设施和行道树如何影响人们的路线选择。' },
     introList: {
-      en: ['About 5 minutes, 10 questions', 'Anonymous: we do not collect your name, contact details or location', 'Every question needs an answer, and you cannot go back to earlier questions', 'For people aged 18 and above'],
-      zh: ['约 5 分钟，共 10 题', '匿名作答：不收集姓名、联系方式或位置', '每题必答；答过的题不能返回修改', '仅限 18 岁及以上人士参与'] },
+      en: ['About 5–8 minutes, 10 questions', 'Anonymous: we do not collect your name, contact details or location', 'Every question needs an answer, and you cannot go back to earlier questions', 'For people aged 18 and above'],
+      zh: ['约 5–8 分钟，共 10 题', '匿名作答：不收集姓名、联系方式或位置', '每题必答；答过的题不能返回修改', '仅限 18 岁及以上人士参与'] },
     consent: { en: 'By tapping Start, you agree that your anonymous answers may be used for academic research.', zh: '点击「开始」即表示你同意我们将你的匿名答案用于学术研究。' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
