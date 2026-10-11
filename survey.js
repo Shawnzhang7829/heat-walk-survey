@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v5';
+  const VERSION = '1012v6';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const CFG = window.SURVEY_CONFIG || {};                 // config.js:提交地址(Google Apps Script Web App)与联系方式
@@ -62,11 +62,11 @@
     q5Title: { en: 'Based on these descriptions, which route would you take?', zh: '根据以下描述，你会选择哪条路线？' },
     q5Scene: { en: '<b>About 2 pm on a sunny day.</b> You are walking to your destination. Two routes lead there:', zh: '<b>晴天，下午 2 点左右。</b>你正步行前往目的地，有两条路线可以到达：' },
     q5Short: {
-      en: 'The most direct way. It cuts between the HDB blocks on open footpaths; almost all of it is in the sun.',
-      zh: '最直接的路线。在组屋楼栋之间的露天小路上穿行，几乎全程没有遮挡。' },
+      en: 'The most direct way. Most of it runs along an open footpath beside the main road, with only a short covered stretch.',
+      zh: '最直接的路线。大部分路段沿着大马路旁的露天人行道走，只有很短一段有遮盖。' },
     q5Cool: {
-      en: 'A slightly longer way. It follows a covered linkway along the main road and on towards the blocks; only the last stretch is open.',
-      zh: '稍微绕一点的路线。沿大马路边的有顶连廊走，再顺着连廊走向组屋区，只有最后一段没有遮挡。' },
+      en: 'A slightly longer way. Most of it runs under the shophouse five-foot ways (arcades) and a covered linkway.',
+      zh: '稍微绕一点的路线。大部分路段走在店屋的五脚基（骑楼）和有顶连廊下面。' },
 
     q6Title: { en: 'A navigation app shows the same trip. Which route would you take?', zh: '导航软件显示了同一段行程。你会选择哪条路线？' },
     q6Scene: { en: '<b>Same trip as the previous question.</b> The app shows each route on the map with this information:', zh: '<b>与上一题是同一段行程。</b>导航软件在地图上显示了两条路线，并给出以下信息：' },
@@ -77,6 +77,8 @@
     mLong: { en: 'Longest stretch in the sun', zh: '最长连续暴晒' },
     mMin: { en: (x) => `${x} min`, zh: (x) => `${x} 分钟` },
     mExtra: { en: (m, p) => `+${m} m (+${p}%)`, zh: (m, p) => `+${m} 米（+${p}%）` },
+    vsA: { en: 'vs. Route A', zh: '较路线 A' },
+    unitMin: { en: ' min', zh: ' 分钟' }, unitM: { en: ' m', zh: ' 米' }, unitPP: { en: ' pp', zh: ' 个百分点' },
     shaded: { en: 'shaded', zh: '有遮荫' },
     sunny: { en: 'in the sun', zh: '暴晒' },
     q6Note: { en: 'Shade coverage = share of the route that is in shade at 2 pm.', zh: '遮荫率 = 下午 2 点时路线上处于阴影中的长度占比。' },
@@ -393,16 +395,22 @@
     put(...head(tr('part2'), tr('q5Title')), el('div', { class: 'scene', html: tr('q5Scene') }),
       routePair('q5', S.answers, S.assignA.q56, (L, side) => el('p', { class: 'rtext' }, side === 'short' ? tr('q5Short') : tr('q5Cool'))));
   }
+  // ref = 路线 A 的指标:给路线 B 的每个指标显示相对 A 的变化量(按显示值相减,保证与页面数字一致)
   function metricBody(m, ref) {
-    const isLonger = m.extra > 0;
     const shadePct = Math.max(0, Math.min(100, m.sigma));
+    const sgn = (d) => (d > 0 ? '+' : d < 0 ? '−' : '±');
+    const dl = (d, unit, extra) => (ref ? el('div', { class: 'delta' }, `${tr('vsA')} ${sgn(d)}${fmt(Math.abs(d))}${tr(unit)}${extra || ''}`) : null);
+    const tA = ref ? Math.round(ref.min) : 0, tB = Math.round(m.min);
+    const dLen = ref ? m.len - ref.len : 0;
+    const pct = ref && ref.len ? Math.round((100 * dLen) / ref.len) : 0;
+    const cell = (k, v, d) => el('div', {}, el('span', { class: 'k' }, tr(k)), el('span', { class: 'v' }, v), d);
     return [
       el('div', { class: 'mgrid' },
-        el('div', {}, el('span', { class: 'k' }, tr('mTime')), el('span', { class: 'v' }, tr('mMin', Math.round(m.min)))),
-        el('div', {}, el('span', { class: 'k' }, tr('mDist')), el('span', { class: 'v' }, `${fmt(m.len)} m`, isLonger ? el('span', { class: 'delta' }, ' ' + tr('mExtra', m.extra, m.extra_pct)) : null)),
-        el('div', {}, el('span', { class: 'k' }, tr('mShade')), el('span', { class: 'v' }, `${m.sigma}%`)),
-        el('div', {}, el('span', { class: 'k' }, tr('mSun')), el('span', { class: 'v' }, `${fmt(m.sun)} m`)),
-        el('div', {}, el('span', { class: 'k' }, tr('mLong')), el('span', { class: 'v' }, `${fmt(m.lsun)} m`))),
+        cell('mTime', tr('mMin', tB), ref && dl(tB - tA, 'unitMin')),
+        cell('mDist', `${fmt(m.len)} m`, ref && dl(dLen, 'unitM', S.lang === 'zh' ? `（${sgn(pct)}${Math.abs(pct)}%）` : ` (${sgn(pct)}${Math.abs(pct)}%)`)),
+        cell('mShade', `${m.sigma}%`, ref && dl(m.sigma - ref.sigma, 'unitPP')),
+        cell('mSun', `${fmt(m.sun)} m`, ref && dl(m.sun - ref.sun, 'unitM')),
+        cell('mLong', `${fmt(m.lsun)} m`, ref && dl(m.lsun - ref.lsun, 'unitM'))),
       el('div', { class: 'shadebar', role: 'img', 'aria-label': `${tr('mShade')} ${m.sigma}%` }, el('i', { style: `width:${shadePct}%` })),
       el('div', { class: 'shadekey' }, el('span', {}, el('i', { style: 'background:#6E8FA8' }), tr('shaded')), el('span', {}, el('i', { style: 'background:#F2C46B' }), tr('sunny'))),
     ];
@@ -414,7 +422,7 @@
     put(...head(tr('part2'), tr('q6Title')), el('div', { class: 'scene', html: tr('q6Scene') }),
       mapView(q.map, lines, [p0[0], p0[p0.length - 1]]),
       el('div', { class: 'legend' }, ...['A', 'B'].map((L) => el('span', {}, el('i', { style: `background:${L === 'A' ? '#7C3AED' : '#1F2937'}` }), tr('route', L)))),
-      routePair('q6', S.answers, A, (L, side) => metricBody(q.routes[side].m)),
+      routePair('q6', S.answers, A, (L, side) => metricBody(q.routes[side].m, L === 'B' ? q.routes[sideOf(A, 'A')].m : null)),
       el('p', { class: 'note' }, tr('q6Note')));
   }
 

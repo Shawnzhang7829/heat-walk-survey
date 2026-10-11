@@ -183,3 +183,5 @@ ul.plain li { margin: 4px 0; }
 .q9bar .track { height: 12px; background: #EEEBE4; border-radius: 6px; overflow: hidden; }
 .q9bar .track i { display: block; height: 100%; transition: width .2s ease; }
 .q9bar .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.mgrid .delta { font-size: 12.5px; color: var(--accent); font-weight: 600; margin-top: 1px; }
