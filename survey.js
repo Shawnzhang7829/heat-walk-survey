@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1011v4';
+  const VERSION = '1011v4b';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const CFG = window.SURVEY_CONFIG || {};                 // config.js:提交地址(Google Apps Script Web App)与联系方式
@@ -18,7 +18,8 @@
     start: { en: 'Start', zh: '开始' },
     submit: { en: 'Submit', zh: '提交' },
     needAll: { en: 'Please answer every item to continue.', zh: '请回答本页所有题目后继续。' },
-    noBack: { en: 'Answers cannot be changed after moving on.', zh: '进入下一题后不能返回修改。' },
+    back: { en: 'Back', zh: '上一题' },
+    lockedNote: { en: 'Your answer to the previous question is saved and can no longer be changed.', zh: '上一题的答案已保存，不能再修改。' },
     step: { en: (a, b) => `${a} / ${b}`, zh: (a, b) => `${a} / ${b}` },
     tapZoom: { en: 'Tap to enlarge', zh: '点击放大' },
     chooseRoute: { en: (x) => `Choose route ${x}`, zh: (x) => `选择路线 ${x}` },
@@ -32,8 +33,8 @@
       en: 'We are researchers studying how people in Singapore walk on hot days, and how shade facilities (arcades / five-foot ways, covered linkways, covered overhead bridges and inter-building corridors) and trees affect which way they go.',
       zh: '我们正在研究新加坡居民在炎热天气中的步行方式，以及骑楼（五脚基）、有顶连廊、有顶人行天桥、楼间连廊等遮荫设施和行道树如何影响人们的路线选择。' },
     introList: {
-      en: ['About 5–8 minutes, 10 questions', 'Anonymous: we do not collect your name, contact details or location', 'Every question needs an answer, and you cannot go back to earlier questions', 'For people aged 18 and above'],
-      zh: ['约 5–8 分钟，共 10 题', '匿名作答：不收集姓名、联系方式或位置', '每题必答；答过的题不能返回修改', '仅限 18 岁及以上人士参与'] },
+      en: ['About 5–8 minutes, 10 questions', 'Anonymous: we do not collect your name, contact details or location', 'Every question needs an answer; you can go back to change earlier answers'],
+      zh: ['约 5–8 分钟，共 10 题', '匿名作答：不收集姓名、联系方式或位置', '每题必答；可以返回上一题修改答案'] },
     consent: { en: 'By tapping Start, you agree that your anonymous answers may be used for academic research.', zh: '点击「开始」即表示你同意我们将你的匿名答案用于学术研究。' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
@@ -42,7 +43,7 @@
     gender: { en: 'Gender', zh: '性别' },
     genderOpts: { en: ['Male', 'Female', 'Prefer not to say'], zh: ['男', '女', '不愿透露'] },
     age: { en: 'Age', zh: '年龄' },
-    ageOpts: { en: ['18–24', '25–34', '35–44', '45–54', '55–64', '65+'], zh: ['18–24', '25–34', '35–44', '45–54', '55–64', '65 岁及以上'] },
+    ageOpts: { en: ['Under 18', '18–24', '25–34', '35–44', '45–54', '55–64', '65+'], zh: ['18 岁以下', '18–24', '25–34', '35–44', '45–54', '55–64', '65 岁及以上'] },
 
     q1Title: { en: 'On your usual commute, how often do you come across or use shade facilities like these?', zh: '你平时通勤出行时，大约多频繁会经过或使用这类遮荫设施？' },
     q1Lead: { en: 'Shade facilities: the four types shown below. Tap a photo to enlarge.', zh: '遮荫设施（shade facility）指下面四类。点击照片可放大。' },
@@ -132,7 +133,7 @@
   };
 
   const Q1V = ['every', 'half', 'lesshalf', 'never'], Q2V = ['seek', 'notice', 'rarely'], Q3V = ['yes', 'no'], Q4V = ['yes', 'no'];
-  const GENDER = ['male', 'female', 'na'], AGE = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+  const GENDER = ['male', 'female', 'na'], AGE = ['u18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 
   let C = null;      // content.json
   let S = null;      // respondent state
@@ -224,6 +225,9 @@
     sc.render(sc);
     $('bottom').hidden = !!sc.final;
     $('next').textContent = tr(sc.label || 'next');
+    (S.reached || (S.reached = {}))[sc.id] = 1;
+    $('back').textContent = tr('back');
+    $('back').hidden = backTarget() < 0;
     updateNext();
     const t = S.timing[sc.id] || (S.timing[sc.id] = { ms: 0, first: null, views: 0 });
     t.views += 1; t._enter = now();
@@ -233,7 +237,8 @@
     const sc = screens[S.idx];
     const ok = !!sc.ok();
     $('next').disabled = !ok;
-    $('hint').textContent = ok ? (sc.id === 'intro' ? '' : tr('noBack')) : (sc.id === 'intro' ? '' : tr('needAll'));
+    const lockedPrev = (sc.id === 'q6' || sc.id.startsWith('q8_')) && ok;
+    $('hint').textContent = ok ? (lockedPrev ? tr('lockedNote') : '') : (sc.id === 'intro' ? '' : tr('needAll'));
   }
   function answered() {
     const sc = screens[S.idx]; const t = S.timing[sc.id];
@@ -244,15 +249,29 @@
     const sc = screens[S.idx]; const t = S.timing[sc.id];
     if (t && t._enter) { t.ms += now() - t._enter; t._enter = null; }
   }
-  function next() {
-    const sc = screens[S.idx];
-    if (!sc.ok()) return;
-    leave();
-    S.idx = Math.min(S.idx + 1, screens.length - 1);
-    render();
+  // 信息递进的前一题在看到后一题后锁定:进入 Q6 后 Q5 锁定,进入 Q8 后 Q7 锁定;前进/返回都跳过锁定题
+  function isLocked(sc) {
+    const R = S.reached || {};
+    return (sc.id === 'q5' && !!R.q6) || (sc.id.startsWith('q7_') && !!R['q8_' + sc.sid]);
+  }
+  function backTarget() {
+    let t = S.idx - 1;
+    while (t >= 1 && isLocked(screens[t])) t -= 1;
+    return t >= 1 && !screens[S.idx].final ? t : -1;
+  }
+  function go(t) {
+    leave(); S.idx = t; render();
     window.scrollTo(0, 0); main.focus({ preventScroll: true });
     preloadAhead();
   }
+  function next() {
+    const sc = screens[S.idx];
+    if (!sc.ok()) return;
+    let t = Math.min(S.idx + 1, screens.length - 1);
+    while (t < screens.length - 1 && isLocked(screens[t])) t += 1;
+    go(t);
+  }
+  function back() { const t = backTarget(); if (t >= 0) go(t); }
 
   // ---------- reusable widgets ----------
   function radios(options, values, current, onPick, row = false) {
@@ -605,12 +624,13 @@
 
   // ---------- boot ----------
   $('next').addEventListener('click', next);
+  $('back').addEventListener('click', back);
   document.querySelectorAll('.lang button').forEach((b) => b.addEventListener('click', () => {
     if (!S || S.lang === b.dataset.lang) return;
     S.lang = b.dataset.lang; S.langSwitches += 1; leave(); render();
   }));
   history.pushState({ s: 1 }, '', location.href);
-  window.addEventListener('popstate', () => { history.pushState({ s: 1 }, '', location.href); $('hint').textContent = tr('noBack'); });
+  window.addEventListener('popstate', () => { history.pushState({ s: 1 }, '', location.href); if (S && screens.length) back(); });   // 手机返回键 = 上一题
 
   async function boot(fresh) {
     if (!C) {
