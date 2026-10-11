@@ -5,9 +5,10 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v7';
+  const VERSION = '1012v9';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
+  const REVIEW = STORE + '_review';   // 提交后的只读答案快照
   const CFG = window.SURVEY_CONFIG || {};                 // config.js:提交地址(Google Apps Script Web App)与联系方式
   const API = CFG.submitUrl || '';
   const CONTACT = CFG.contact || { en: '', zh: '' };   // optional researcher contact / ethics line shown on the intro screen
@@ -107,8 +108,9 @@
     part4: { en: (k, n) => `Part 4 · Detour or sun? · example ${k} of ${n}`, zh: (k, n) => `第四部分 · 绕路还是晒太阳？· 例子 ${k}/${n}` },
     q9Title: { en: 'Compared with walking in the sun and making a detour, which do you prefer?', zh: '你觉得相比于暴晒距离和绕路，你更喜欢哪个？' },
     q9Scene: {
-      en: '<b>About 2 pm, sunny.</b> A navigation app offers 7 routes for the same trip. Towards the left you walk farther (more detour) but more of the way is shaded; towards the right the route is shorter but more of it is in the sun.',
-      zh: '<b>晴天，下午 2 点左右。</b>导航软件为同一段行程给出 7 条路线。越往左，绕路越多，但更多路段有遮荫；越往右，路越短，但暴晒距离越长。' },
+      en: (d) => `<b>Imagine a scorching midday, around 1 pm.</b> The sun is fierce and it is hard to keep walking in it. You need to walk to a place about <b>${d} m</b> away (this is a hypothetical trip). A navigation app offers 7 routes: towards the left you walk farther (more detour) but more of the way is shaded; towards the right the route is shorter but more of it is in the sun.`,
+      zh: (d) => `<b>设想一个酷热的中午（约下午 1 点）。</b>太阳很毒，在太阳下很难走下去。你要步行去约 <b>${d} 米</b>外的地方（假设的行程）。导航软件给出 7 条路线：越往左，绕路越多，但更多路段有遮荫；越往右，路越短，但暴晒距离越长。` },
+    schShade: { en: 'shaded', zh: '有遮荫' }, schSun: { en: 'in the sun', zh: '暴晒' },
     q9How: { en: 'Tap or slide along the scale to compare the options, then leave it on the one you would choose.', zh: '点击或拖动刻度比较各个方案，最后停在你会选择的那一档。' },
     q9Left: { en: (m) => `← More detour (up to +${m} m)`, zh: (m) => `← 多绕路（最多 +${m} 米）` },
     q9Right: { en: (m) => `More sun (up to ${m} m) →`, zh: (m) => `多暴晒（最多 ${m} 米）→` },
@@ -128,6 +130,9 @@
     retry: { en: 'Try again', zh: '重试' },
     thanks: { en: 'Thank you!', zh: '谢谢参与！' },
     thanksLead: { en: 'Your answers have been saved.', zh: '你的答案已保存。' },
+    reviewBtn: { en: 'View my answers', zh: '查看我的回答' },
+    reviewHide: { en: 'Hide my answers', zh: '收起我的回答' },
+    reviewTitle: { en: 'Your answers (view only — they can no longer be changed)', zh: '你的回答（仅供查看，不能修改）' },
     code: { en: 'Response code', zh: '答卷编号' },
     already: { en: 'You have already completed this survey on this device. Thank you!', zh: '你已在本设备上完成过本问卷，谢谢！' },
     again: { en: 'Someone else using this device? Start a new response', zh: '其他人使用本设备？开始新的答卷' },
@@ -175,7 +180,13 @@
   function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable: survey still works */ } }
   function load() { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } }
   function isDone() { try { return localStorage.getItem(DONE) === '1'; } catch (e) { return false; } }
-  function setDone() { try { localStorage.setItem(DONE, '1'); localStorage.removeItem(STORE); } catch (e) { } }
+  function setDone() {
+    try {
+      localStorage.setItem(REVIEW, JSON.stringify({ rid: S.rid, answers: S.answers, assignA: S.assignA, order7: S.order7, q9order: S.q9order }));
+      localStorage.setItem(DONE, '1'); localStorage.removeItem(STORE);
+    } catch (e) { }
+  }
+  function loadReview() { try { return JSON.parse(localStorage.getItem(REVIEW) || 'null'); } catch (e) { return null; } }
   const fmt = (x) => Math.round(x).toLocaleString(S.lang === 'zh' ? 'zh-CN' : 'en-SG');
 
   function newState() {
@@ -477,6 +488,33 @@
   }
 
   // ---------- Q9 ----------
+  // 假设情境示意图:7 条弧线(灰),选中一条:橙色底 + 蓝灰虚线段(占比 = 遮荫率,沿线均匀分布)
+  function schematicView(q, k) {
+    const sc = q.schematic, box = el('div', { class: 'map schematic' });
+    const svg = svgEl('svg', { viewBox: `0 0 ${sc.w} ${sc.h + 40}`, role: 'img', 'aria-label': 'route options' });
+    svg.style.position = 'static'; svg.style.display = 'block';
+    q.levels.forEach((lv, i) => svg.append(svgEl('path', { d: lv.svg, fill: 'none', stroke: '#C9C3B8', 'stroke-width': 3, 'stroke-linecap': 'round', opacity: k && i + 1 === k ? 0 : 1 })));
+    if (k) {
+      const lv = q.levels[k - 1], sg = Math.max(0, Math.min(100, lv.m.sigma));
+      svg.append(svgEl('path', { d: lv.svg, fill: 'none', stroke: '#fff', 'stroke-width': 16, 'stroke-linecap': 'round' }));
+      svg.append(svgEl('path', { d: lv.svg, fill: 'none', stroke: '#E8A33D', 'stroke-width': 10, 'stroke-linecap': 'butt' }));
+      svg.append(svgEl('path', { d: lv.svg, fill: 'none', stroke: '#6E8FA8', 'stroke-width': 10, 'stroke-linecap': 'butt', pathLength: 100, 'stroke-dasharray': `${sg / 10} ${10 - sg / 10}` }));
+    }
+    const [sx, sy] = sc.start, [dx, dy] = sc.dest;
+    svg.append(svgEl('circle', { cx: sx, cy: sy, r: 11, fill: '#fff', stroke: '#111', 'stroke-width': 5 }));
+    svg.append(svgEl('rect', { x: dx - 11, y: dy - 11, width: 22, height: 22, rx: 3, fill: '#111' }));
+    for (const [x, txt] of [[sx, tr('start_')], [dx, tr('dest')]]) {
+      const t = svgEl('text', { x, y: sy + 36, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 700, 'font-family': 'Arial, sans-serif', fill: '#111' }); t.textContent = txt; svg.append(t);
+    }
+    const lg = svgEl('g', { transform: `translate(${sc.w / 2 - 110},${sc.h + 26})` });
+    lg.append(svgEl('rect', { x: 0, y: -12, width: 26, height: 10, fill: '#6E8FA8' }));
+    const t1 = svgEl('text', { x: 32, y: -2, 'font-size': 16, fill: '#646B76', 'font-family': 'Arial, sans-serif' }); t1.textContent = tr('schShade'); lg.append(t1);
+    lg.append(svgEl('rect', { x: 120, y: -12, width: 26, height: 10, fill: '#E8A33D' }));
+    const t2 = svgEl('text', { x: 152, y: -2, 'font-size': 16, fill: '#646B76', 'font-family': 'Arial, sans-serif' }); t2.textContent = tr('schSun'); lg.append(t2);
+    svg.append(lg);
+    box.append(svg);
+    return box;
+  }
   function rQ9(sc) {
     const q = C.q9s.find((e) => e.eid === sc.eid), lv = q.levels, N = lv.length, eid = sc.eid;
     const visits = S.q9visits[eid] || (S.q9visits[eid] = []);
@@ -493,6 +531,7 @@
           el('span', { class: 'val' }, m ? `${fmt(v)} m` : '–'))));
     };
     const drawMap = (k) => {
+      if (q.hypo) { mapBox.replaceChildren(schematicView(q, k)); return; }
       const lines = lv.map((x, i) => ({ path: x.path, color: '#8F877A', w: 5, op: 0.45 }));
       if (k) lines.push({ path: lv[k - 1].path, color: '#7C3AED', w: 10, halo: true });
       const p0 = lv[N - 1].path;
@@ -538,7 +577,7 @@
     });
     const slider = el('div', { class: 'slider', role: 'radiogroup' }, track,
       el('div', { class: 'ends' }, el('span', {}, tr('q9Left', fmt(maxExtra))), el('span', {}, tr('q9Right', fmt(maxSun)))));
-    put(...head(tr('part4', sc.k, sc.n), tr('q9Title')), el('div', { class: 'scene', html: tr('q9Scene') }), mapBox, el('p', { class: 'note' }, tr('q9How')), slider, barsBox, panel);
+    put(...head(tr('part4', sc.k, sc.n), tr('q9Title')), el('div', { class: 'scene', html: tr('q9Scene', fmt(q.L0 || lv[N - 1].m.len)) }), mapBox, el('p', { class: 'note' }, tr('q9How')), slider, barsBox, panel);
     drawMap(S.answers.q9[eid]); drawBars(S.answers.q9[eid]); drawPanel(S.answers.q9[eid]);
   }
 
@@ -553,6 +592,7 @@
       q5: { letter: a.q5, route: pick(A.q56, a.q5), A: A.q56 },
       q6: { letter: a.q6, route: pick(A.q56, a.q6), A: A.q56 },
       q9: Object.fromEntries(C.q9s.map((e) => [e.eid, { level: a.q9[e.eid], lam: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam : null,
+        lam_lo: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam_lo : null, lam_hi: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam_hi : null, trip_m: e.L0 || null,
         pos: S.q9order.indexOf(e.eid) + 1, visits: (S.q9visits[e.eid] || []).length, path: (S.q9visits[e.eid] || []).map((x) => x[0]) }])),
       q8seen: Object.fromEntries(Object.entries(S.seen8).map(([sid, v]) => [sid, { A: new Set(v.A).size, B: new Set(v.B).size }])),
       timing: Object.fromEntries(Object.entries(S.timing).map(([k, t]) => [k, { ms: t.ms, first: t.first, views: t.views }])),
@@ -583,13 +623,58 @@
   }
   function thanks(box) {
     box.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('h1', { class: 'center' }, tr('thanks')), el('p', { class: 'center lead' }, tr('thanksLead')),
-      el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, S.rid.slice(0, 8).toUpperCase())));
+      el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, S.rid.slice(0, 8).toUpperCase())),
+      reviewToggle(loadReview() || { rid: S.rid, answers: S.answers, assignA: S.assignA, order7: S.order7, q9order: S.q9order }));
+  }
+  // 只读回答清单
+  function reviewToggle(snap) {
+    if (!snap || !snap.answers) return null;
+    const wrap = el('div', { class: 'review-wrap' });
+    const list = el('div', { class: 'review', hidden: true });
+    const btn = el('button', { type: 'button', class: 'back review-btn' }, tr('reviewBtn'));
+    btn.addEventListener('click', () => {
+      const show = list.hidden;
+      if (show && !list.childNodes.length) list.append(...reviewItems(snap));
+      list.hidden = !show; btn.textContent = tr(show ? 'reviewHide' : 'reviewBtn');
+    });
+    wrap.append(el('p', { class: 'center' }, btn), list);
+    return wrap;
+  }
+  function reviewItems(snap) {
+    const a = snap.answers, A = snap.assignA || {}, out = [el('h3', {}, tr('reviewTitle'))];
+    const item = (q, title, ans) => out.push(el('div', { class: 'ritem' }, el('div', { class: 'rq' }, el('b', {}, q + ' '), title), el('div', { class: 'ra' }, ans || '—')));
+    const opt = (key, vals, v) => { const i = vals.indexOf(v); return i >= 0 ? tr(key)[i] : null; };
+    const q0 = a.q0 || {};
+    item('1.', tr('q0Title'), [opt('genderOpts', GENDER, q0.gender), opt('ageOpts', AGE, q0.age)].filter(Boolean).join(' · '));
+    item('2.', tr('q1Title'), opt('q1Opts', Q1V, a.q1));
+    item('3.', tr('q2Title'), opt('q2Opts', Q2V, a.q2));
+    item('4.', tr('q3Title'), opt('q3Opts', Q3V, a.q3));
+    item('5.', tr('q4Title'), opt('q4Opts', Q4V, a.q4));
+    if (a.q5) item('6.', tr('q5Title'), `${tr('route', a.q5)} — ${sideOf(A.q56, a.q5) === 'short' ? tr('q5Short') : tr('q5Cool')}`);
+    if (a.q6) { const m = C.q56.routes[sideOf(A.q56, a.q6)].m; item('7.', tr('q6Title'), `${tr('route', a.q6)} — ${tr('mDist')} ${fmt(m.len)} m · ${tr('mShade')} ${m.sigma}%`); }
+    const order = snap.order7 || C.scenarios.map((x) => x.sid), n = order.length;
+    order.forEach((sid, k) => {
+      const sc = scen(sid); if (!sc) return;
+      for (const [qn, key, ttl, part] of [['8.', 'q7', 'q7Title', 'part3'], ['9.', 'q8', 'q8Title', 'part3b']]) {
+        const L = (a[key] || {})[sid]; if (!L) continue;
+        const m = sc.routes[sideOf(A[sid], L)].m;
+        item(qn, `${tr(part, k + 1, n)} — ${tr(ttl)}`, `${tr('route', L)} — ${tr('lenTime', fmt(m.len), Math.round(m.min))}`);
+      }
+    });
+    const q9o = snap.q9order || C.q9s.map((e) => e.eid);
+    q9o.forEach((eid, k) => {
+      const e = C.q9s.find((x) => x.eid === eid), lvl = (a.q9 || {})[eid]; if (!e || !lvl) return;
+      const m = e.levels[lvl - 1].m;
+      item('10.', `${tr('part4', k + 1, q9o.length)} — ${tr('q9Title')}`, `${tr('q9Option', lvl)} — ${tr('q9Detour')} +${fmt(m.extra)} m (${tr('q9DetourRate')} +${m.extra_pct}%) · ${tr('q9Shade')} ${m.sigma}%`);
+    });
+    return out;
   }
   function rEnd() { const box = el('div'); put(box); if (S._sent) thanks(box); else submit(box); }
   function rAlready() {
     $('bottom').hidden = true;
     main.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('p', { class: 'center' }, tr('already')),
-      el('p', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn', onclick: () => { try { localStorage.removeItem(DONE); } catch (e) { } boot(true); } }, tr('again'))));
+      ...[reviewToggle(loadReview())].filter(Boolean),
+      el('p', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn', onclick: () => { try { localStorage.removeItem(DONE); localStorage.removeItem(REVIEW); } catch (e) { } boot(true); } }, tr('again'))));
   }
 
   // ---------- lightbox ----------
@@ -618,7 +703,7 @@
     if (sc.id.startsWith('q7_')) { const s = scen(sc.sid); return [s.map.img, s.routes.short.start, s.routes.cool.start]; }
     if (sc.id.startsWith('q8_')) { const s = scen(sc.sid); return [...s.routes.short.seq.slice(0, 2), ...s.routes.cool.seq.slice(0, 2)]; }
     if (sc.id === 'q6') return [C.q56.map.img];
-    if (sc.id.startsWith('q9_')) return [C.q9s.find((e) => e.eid === sc.eid).map.img];
+    if (sc.id.startsWith('q9_')) { const e = C.q9s.find((x) => x.eid === sc.eid); return e.map ? [e.map.img] : []; }
     if (sc.id === 'q1') return C.facilities.map((f) => f.img);
     if (sc.id === 'q2') return C.facilities.map((f) => f.img_hl || f.img);
     return [];
