@@ -1,0 +1,629 @@
+/* Walking-in-the-heat route-choice survey (1011v1).
+ * Content (images, maps, route metrics) comes from content.json, built by build_content.py.
+ * Every item is required. Route sides (A/B) and situation order are randomised per respondent;
+ * the true labels (shortest / coolest) are stored alongside each answer.
+ * Progress is kept in localStorage so a reload resumes where the respondent left off. */
+(() => {
+  'use strict';
+  const VERSION = '1011v4';
+  const STORE = 'shadewalk_survey_' + VERSION;
+  const DONE = STORE + '_done';
+  const CFG = window.SURVEY_CONFIG || {};                 // config.js:提交地址(Google Apps Script Web App)与联系方式
+  const API = CFG.submitUrl || '';
+  const CONTACT = CFG.contact || { en: '', zh: '' };   // optional researcher contact / ethics line shown on the intro screen
+
+  const I18N = {
+    brand: { en: 'Walking in the heat', zh: '炎热天气下的步行' },
+    next: { en: 'Next', zh: '下一题' },
+    start: { en: 'Start', zh: '开始' },
+    submit: { en: 'Submit', zh: '提交' },
+    needAll: { en: 'Please answer every item to continue.', zh: '请回答本页所有题目后继续。' },
+    noBack: { en: 'Answers cannot be changed after moving on.', zh: '进入下一题后不能返回修改。' },
+    step: { en: (a, b) => `${a} / ${b}`, zh: (a, b) => `${a} / ${b}` },
+    tapZoom: { en: 'Tap to enlarge', zh: '点击放大' },
+    chooseRoute: { en: (x) => `Choose route ${x}`, zh: (x) => `选择路线 ${x}` },
+    chosen: { en: (x) => `Route ${x} chosen ✓`, zh: (x) => `已选路线 ${x} ✓` },
+    route: { en: (x) => `Route ${x}`, zh: (x) => `路线 ${x}` },
+    start_: { en: 'Start', zh: '起点' },
+    dest: { en: 'Destination', zh: '目的地' },
+
+    introTitle: { en: 'Walking in the heat: how do you choose your route?', zh: '炎热天气下的步行：你会怎么选路？' },
+    introLead: {
+      en: 'We are researchers studying how people in Singapore walk on hot days, and how shade facilities (arcades / five-foot ways, covered linkways, covered overhead bridges and inter-building corridors) and trees affect which way they go.',
+      zh: '我们正在研究新加坡居民在炎热天气中的步行方式，以及骑楼（五脚基）、有顶连廊、有顶人行天桥、楼间连廊等遮荫设施和行道树如何影响人们的路线选择。' },
+    introList: {
+      en: ['About 5 minutes, 10 questions', 'Anonymous: we do not collect your name, contact details or location', 'Every question needs an answer, and you cannot go back to earlier questions', 'For people aged 18 and above'],
+      zh: ['约 5 分钟，共 10 题', '匿名作答：不收集姓名、联系方式或位置', '每题必答；答过的题不能返回修改', '仅限 18 岁及以上人士参与'] },
+    consent: { en: 'By tapping Start, you agree that your anonymous answers may be used for academic research.', zh: '点击「开始」即表示你同意我们将你的匿名答案用于学术研究。' },
+    resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
+
+    part1: { en: 'Part 1 · About you and shade facilities', zh: '第一部分 · 个人信息与遮荫设施' },
+    q0Title: { en: 'About you', zh: '关于你' },
+    gender: { en: 'Gender', zh: '性别' },
+    genderOpts: { en: ['Male', 'Female', 'Prefer not to say'], zh: ['男', '女', '不愿透露'] },
+    age: { en: 'Age', zh: '年龄' },
+    ageOpts: { en: ['18–24', '25–34', '35–44', '45–54', '55–64', '65+'], zh: ['18–24', '25–34', '35–44', '45–54', '55–64', '65 岁及以上'] },
+
+    q1Title: { en: 'On your usual commute, how often do you come across or use shade facilities like these?', zh: '你平时通勤出行时，大约多频繁会经过或使用这类遮荫设施？' },
+    q1Lead: { en: 'Shade facilities: the four types shown below. Tap a photo to enlarge.', zh: '遮荫设施（shade facility）指下面四类。点击照片可放大。' },
+    q1Opts: { en: ['On every trip', 'On more than half of my trips', 'On less than half of my trips', 'Almost never'], zh: ['每次出行都会遇到', '一半以上的出行会遇到', '不到一半的出行会遇到', '几乎遇不到'] },
+
+    q2Title: { en: 'When you walk, especially in the hottest hours, do you notice shade facilities like these?', zh: '步行时（尤其在最热的时段），你会注意到这些遮荫设施吗？' },
+    q2Opts: { en: ['Yes — I actively look for them', 'Yes — I notice them, but don’t look for them', 'No — I rarely notice them'], zh: ['会——我会主动寻找它们', '会注意到，但不会刻意寻找', '基本不会注意到'] },
+
+    q3Title: { en: 'Are shade facilities like these important for keeping you out of the sun?', zh: '你觉得这些遮荫设施对遮挡阳光重要吗？' },
+    q3Opts: { en: ['Important — under them I’m out of the sun', 'Not important — I still get sun'], zh: ['重要——在它们下面不晒', '不重要——在它们下面还是晒'] },
+
+    q4Title: { en: 'Do you ever deliberately take a longer way to avoid the sun?', zh: '你平时会为了避晒而主动绕路吗？' },
+    q4Opts: { en: ['Yes', 'No'], zh: ['会', '不会'] },
+
+    part2: { en: 'Part 2 · Choosing a route', zh: '第二部分 · 选择路线' },
+    q5Title: { en: 'Based on these descriptions, which route would you take?', zh: '根据以下描述，你会选择哪条路线？' },
+    q5Scene: { en: '<b>About 2 pm on a sunny day.</b> You are walking to your destination. Two routes lead there:', zh: '<b>晴天，下午 2 点左右。</b>你正步行前往目的地，有两条路线可以到达：' },
+    q5Short: {
+      en: 'The most direct way. It cuts between the HDB blocks on open footpaths; almost all of it is in the sun.',
+      zh: '最直接的路线。在组屋楼栋之间的露天小路上穿行，几乎全程没有遮挡。' },
+    q5Cool: {
+      en: 'A slightly longer way. It follows a covered linkway along the main road and on towards the blocks; only the last stretch is open.',
+      zh: '稍微绕一点的路线。沿大马路边的有顶连廊走，再顺着连廊走向组屋区，只有最后一段没有遮挡。' },
+
+    q6Title: { en: 'A navigation app shows the same trip. Which route would you take?', zh: '导航软件显示了同一段行程。你会选择哪条路线？' },
+    q6Scene: { en: '<b>Same trip as the previous question.</b> The app shows each route on the map with this information:', zh: '<b>与上一题是同一段行程。</b>导航软件在地图上显示了两条路线，并给出以下信息：' },
+    mTime: { en: 'Walking time', zh: '步行时间' },
+    mDist: { en: 'Distance', zh: '距离' },
+    mShade: { en: 'Shade coverage', zh: '遮荫率' },
+    mSun: { en: 'Distance in the sun', zh: '暴晒距离' },
+    mLong: { en: 'Longest stretch in the sun', zh: '最长连续暴晒' },
+    mMin: { en: (x) => `${x} min`, zh: (x) => `${x} 分钟` },
+    mExtra: { en: (m, p) => `+${m} m (+${p}%)`, zh: (m, p) => `+${m} 米（+${p}%）` },
+    shaded: { en: 'shaded', zh: '有遮荫' },
+    sunny: { en: 'in the sun', zh: '暴晒' },
+    q6Note: { en: 'Shade coverage = share of the route that is in shade at 2 pm.', zh: '遮荫率 = 下午 2 点时路线上处于阴影中的长度占比。' },
+
+    part3: { en: 'Part 3 · A walking situation · step 1 of 2: the start', zh: '第三部分 · 步行情境 · 第 1 步：起点' },
+    q7Title: { en: 'Which way do you go?', zh: '你会走哪条路？' },
+    q7Scene: {
+      en: (o) => `<b>${o} About 2 pm, sunny.</b> Two routes lead to your destination. The map shows both routes and their lengths, but you can only see what each route looks like <b>at the start</b>.`,
+      zh: (o) => `<b>${o}下午 2 点左右，天气晴热。</b>有两条路线可以到达目的地。地图上显示了两条路线及其长度，但你只能看到每条路线<b>起点</b>处的样子。` },
+    origin: {
+      en: { bus: 'You have just got off the bus.', mrt: 'You have just come out of an MRT station exit.', hdb: 'You are setting off on foot from an HDB block.', other: 'You are setting off on foot.' },
+      zh: { bus: '你刚下巴士，', mrt: '你刚走出地铁站出口，', hdb: '你正从一栋组屋步行出发，', other: '你正步行出发，' } },
+    q7Cap: { en: 'View at the start of the route', zh: '路线起点处的景象' },
+
+    part3b: { en: 'Part 3 · A walking situation · step 2 of 2: whole route', zh: '第三部分 · 步行情境 · 第 2 步：全程' },
+    q8Title: { en: 'Now that you can see the whole route, which way do you go?', zh: '现在你能看到整条路线，你会走哪条路？' },
+    q8Scene: {
+      en: (x) => `<b>Same situation as the previous question.</b> From the start view you chose <b>Route ${x}</b> (this answer is saved). Now you can see each route from start to destination: photos in walking order, about one every 120 m, numbered on the map.<br><b>Please look through all the photos of both routes, and weigh them against the route lengths, before you choose.</b>`,
+      zh: (x) => `<b>与上一题是同一情境。</b>只看起点时你选择了<b>路线 ${x}</b>（该答案已保存）。现在你可以看到每条路线从起点到目的地的全程：照片按步行顺序排列，约每 120 米一张，编号与地图上的点对应。<br><b>请先把两条路线的照片全部看完，再结合路线长度做选择。</b>` },
+    viewed: { en: (a, n) => `Viewed ${a} / ${n}`, zh: (a, n) => `已看 ${a} / ${n} 张` },
+    viewAll: { en: 'Swipe through all photos of both routes to unlock the choice.', zh: '左右滑动看完两条路线的全部照片后才能选择。' },
+    lenTime: { en: (m, t) => `${m} m · ≈ ${t} min walk`, zh: (m, t) => `${m} 米 · 步行约 ${t} 分钟` },
+    photoN: { en: (i, n) => (i === 1 ? `1 / ${n} · start` : `${i} / ${n}`), zh: (i, n) => (i === 1 ? `1 / ${n} · 起点` : `${i} / ${n}`) },
+    nPhotos: { en: (n) => `${n} photos`, zh: (n) => `${n} 张照片` },
+
+    part4: { en: (k, n) => `Part 4 · Detour or sun? · example ${k} of ${n}`, zh: (k, n) => `第四部分 · 绕路还是晒太阳？· 例子 ${k}/${n}` },
+    q9Title: { en: 'Compared with walking in the sun and making a detour, which do you prefer?', zh: '你觉得相比于暴晒距离和绕路，你更喜欢哪个？' },
+    q9Scene: {
+      en: '<b>About 2 pm, sunny.</b> A navigation app offers 7 routes for the same trip. Towards the left you walk farther (more detour) but more of the way is shaded; towards the right the route is shorter but more of it is in the sun.',
+      zh: '<b>晴天，下午 2 点左右。</b>导航软件为同一段行程给出 7 条路线。越往左，绕路越多，但更多路段有遮荫；越往右，路越短，但暴晒距离越长。' },
+    q9How: { en: 'Tap or slide along the scale to compare the options, then leave it on the one you would choose.', zh: '点击或拖动刻度比较各个方案，最后停在你会选择的那一档。' },
+    q9Left: { en: (m) => `← More detour (up to +${m} m)`, zh: (m) => `← 多绕路（最多 +${m} 米）` },
+    q9Right: { en: (m) => `More sun (up to ${m} m) →`, zh: (m) => `多暴晒（最多 ${m} 米）→` },
+    q9Empty: { en: 'Tap the scale to see an option.', zh: '点击刻度查看方案。' },
+    q9Option: { en: (k) => `Option ${k} of 7`, zh: (k) => `方案 ${k}/7` },
+    q9Detour: { en: 'Extra walking (detour)', zh: '多走的路（绕行）' },
+    q9Sun: { en: 'Distance in the sun', zh: '暴晒距离' },
+    q9Shade: { en: 'Shade coverage', zh: '遮荫率' },
+    q9Time: { en: 'Walking time', zh: '步行时间' },
+    q9DetourRate: { en: 'Detour rate', zh: '绕行率' },
+    q9Shortest: { en: 'shortest route', zh: '最短路线' },
+    q9vsShort: { en: (d) => `${d} vs. shortest`, zh: (d) => `较最短路线 ${d}` },
+    q9Bars: { en: ['Detour', 'In the sun'], zh: ['绕行', '暴晒'] },
+
+    sending: { en: 'Submitting your answers…', zh: '正在提交答案……' },
+    sendFail: { en: 'Could not reach the server. Your answers are kept on this device — please check your connection and try again.', zh: '无法连接服务器。答案已保存在本机，请检查网络后重试。' },
+    retry: { en: 'Try again', zh: '重试' },
+    thanks: { en: 'Thank you!', zh: '谢谢参与！' },
+    thanksLead: { en: 'Your answers have been saved.', zh: '你的答案已保存。' },
+    code: { en: 'Response code', zh: '答卷编号' },
+    already: { en: 'You have already completed this survey on this device. Thank you!', zh: '你已在本设备上完成过本问卷，谢谢！' },
+    again: { en: 'Someone else using this device? Start a new response', zh: '其他人使用本设备？开始新的答卷' },
+    loadFail: { en: 'The survey could not be loaded. Please refresh the page.', zh: '问卷加载失败，请刷新页面。' },
+  };
+
+  const Q1V = ['every', 'half', 'lesshalf', 'never'], Q2V = ['seek', 'notice', 'rarely'], Q3V = ['yes', 'no'], Q4V = ['yes', 'no'];
+  const GENDER = ['male', 'female', 'na'], AGE = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+
+  let C = null;      // content.json
+  let S = null;      // respondent state
+  let screens = [];
+  const $ = (id) => document.getElementById(id);
+  const main = $('screen');
+  const put = (...xs) => main.append(...xs.flat(2).filter((x) => x != null && x !== false));
+
+  // ---------- helpers ----------
+  const now = () => Date.now();
+  function tr(key, ...a) {
+    const e = I18N[key]; if (!e) return key;
+    const v = e[S ? S.lang : 'en'] ?? e.en;
+    return typeof v === 'function' ? v(...a) : v;
+  }
+  function el(tag, attrs = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') n.className = v;
+      else if (k === 'html') n.innerHTML = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of kids.flat()) if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(c));
+    return n;
+  }
+  const svgEl = (tag, attrs = {}) => { const n = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
+  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  const coin = () => (Math.random() < 0.5 ? 'short' : 'cool');
+  function uuid() {
+    if (crypto && crypto.randomUUID) return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16)); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable: survey still works */ } }
+  function load() { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } }
+  function isDone() { try { return localStorage.getItem(DONE) === '1'; } catch (e) { return false; } }
+  function setDone() { try { localStorage.setItem(DONE, '1'); localStorage.removeItem(STORE); } catch (e) { } }
+  const fmt = (x) => Math.round(x).toLocaleString(S.lang === 'zh' ? 'zh-CN' : 'en-SG');
+
+  function newState() {
+    const lang = (navigator.language || 'en').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+    const sids = C.scenarios.map((s) => s.sid);
+    const A = { q56: coin() };
+    for (const s of sids) A[s] = coin();
+    return {
+      v: VERSION, rid: uuid(), lang, idx: 0, started: new Date().toISOString(), langSwitches: 0,
+      assignA: A,                        // which true route is shown as "A"
+      sit: sids[Math.floor(Math.random() * sids.length)],   // 每人随机分配 1 个情境(5 选 1),问卷保持 10 题
+      q9order: shuffle(C.q9s.map((e) => e.eid)),            // 第 9 题 3 个例子随机顺序
+      answers: { q0: {}, q7: {}, q8: {}, q9: {} }, q9visits: {}, seen8: { A: [], B: [] },
+      timing: {},
+    };
+  }
+
+  // ---------- screens ----------
+  function buildScreens() {
+    screens = [
+      { id: 'intro', render: rIntro, ok: () => true, label: 'start' },
+      { id: 'q0', render: rQ0, ok: () => S.answers.q0.gender && S.answers.q0.age },
+      { id: 'q1', render: rQ1, ok: () => !!S.answers.q1 },
+      { id: 'q2', render: rQ2, ok: () => !!S.answers.q2 },
+      { id: 'q3', render: rQ3, ok: () => !!S.answers.q3 },
+      { id: 'q4', render: rQ4, ok: () => !!S.answers.q4 },
+      { id: 'q5', render: rQ5, ok: () => !!S.answers.q5 },
+      { id: 'q6', render: rQ6, ok: () => !!S.answers.q6 },
+      // 同一情境配对:先只看起点(Q7),答案锁定后才显示全程(Q8)
+      { id: 'q7_' + S.sit, sid: S.sit, render: rQ7, ok: () => !!S.answers.q7[S.sit] },
+      { id: 'q8_' + S.sit, sid: S.sit, render: rQ8, ok: () => !!S.answers.q8[S.sit] },
+      ...S.q9order.map((eid, k) => ({ id: 'q9_' + eid, eid, k: k + 1, n: S.q9order.length, render: rQ9, ok: () => !!S.answers.q9[eid], label: k === S.q9order.length - 1 ? 'submit' : undefined })),
+      { id: 'end', render: rEnd, ok: () => false, final: true },
+    ];
+  }
+  const qnum = (id) => (/^q\d/.test(id) ? Number(id[1]) + 1 : 0);                 // 题号 1–10(第 9 题的 3 个例子同属第 10 题)
+  const nQuestions = () => Math.max(...screens.map((s) => qnum(s.id)));
+
+  function render() {
+    const sc = screens[S.idx];
+    document.documentElement.lang = S.lang === 'zh' ? 'zh-CN' : 'en';
+    document.title = tr('brand');
+    $('brand').textContent = tr('brand');
+    document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === S.lang)));
+    const qi = qnum(sc.id), nq = nQuestions();
+    $('step').textContent = qi ? tr('step', qi, nq) : '';
+    $('barFill').style.width = `${(sc.final ? 1 : Math.max(0, S.idx - 1) / (screens.length - 2)) * 100}%`;
+    main.replaceChildren();
+    sc.render(sc);
+    $('bottom').hidden = !!sc.final;
+    $('next').textContent = tr(sc.label || 'next');
+    updateNext();
+    const t = S.timing[sc.id] || (S.timing[sc.id] = { ms: 0, first: null, views: 0 });
+    t.views += 1; t._enter = now();
+    save();
+  }
+  function updateNext() {
+    const sc = screens[S.idx];
+    const ok = !!sc.ok();
+    $('next').disabled = !ok;
+    $('hint').textContent = ok ? (sc.id === 'intro' ? '' : tr('noBack')) : (sc.id === 'intro' ? '' : tr('needAll'));
+  }
+  function answered() {
+    const sc = screens[S.idx]; const t = S.timing[sc.id];
+    if (t && t.first == null && t._enter) t.first = now() - t._enter;
+    save(); updateNext();
+  }
+  function leave() {
+    const sc = screens[S.idx]; const t = S.timing[sc.id];
+    if (t && t._enter) { t.ms += now() - t._enter; t._enter = null; }
+  }
+  function next() {
+    const sc = screens[S.idx];
+    if (!sc.ok()) return;
+    leave();
+    S.idx = Math.min(S.idx + 1, screens.length - 1);
+    render();
+    window.scrollTo(0, 0); main.focus({ preventScroll: true });
+    preloadAhead();
+  }
+
+  // ---------- reusable widgets ----------
+  function radios(options, values, current, onPick, row = false) {
+    const g = el('div', { class: 'opts' + (row ? ' row' : ''), role: 'radiogroup' });
+    options.forEach((label, i) => {
+      const b = el('button', { type: 'button', class: 'opt', role: 'radio', 'aria-checked': String(current === values[i]) }, label);
+      b.addEventListener('click', () => {
+        g.querySelectorAll('.opt').forEach((x) => x.setAttribute('aria-checked', 'false'));
+        b.setAttribute('aria-checked', 'true');
+        onPick(values[i]); answered();
+      });
+      g.append(b);
+    });
+    return g;
+  }
+  function head(kicker, title, lead) {
+    return [kicker ? el('p', { class: 'kicker' }, kicker) : null, el('h2', {}, title), lead ? el('p', { class: 'lead' }, lead) : null];
+  }
+  const sideOf = (assign, letter) => (letter === 'A' ? assign : assign === 'short' ? 'cool' : 'short');
+  const letterOf = (assign, route) => (assign === route ? 'A' : 'B');
+
+  function routeCard(letter, selected, body, onPick, locked, sub) {
+    const card = el('section', { class: 'route', role: 'radio', 'aria-checked': String(selected) },
+      el('div', { class: 'rhead' }, el('span', { class: 'badge ' + letter }, letter), el('span', { class: 'rtitle' }, tr('route', letter)), sub ? el('span', { class: 'rsub' }, sub) : null),
+      body,
+      el('button', { type: 'button', class: 'pick', disabled: locked }, selected ? tr('chosen', letter) : tr('chooseRoute', letter)));
+    card.querySelector('.pick').addEventListener('click', () => onPick(letter));
+    return card;
+  }
+  function routePair(key, store, assign, bodyFor, opt = {}) {
+    const wrap = el('div', { class: 'routes', role: 'radiogroup' });
+    const draw = () => {
+      wrap.replaceChildren(...['A', 'B'].map((L) => routeCard(L, store[key] === L, bodyFor(L, sideOf(assign, L)), (x) => { store[key] = x; answered(); draw(); },
+        opt.locked ? opt.locked() : false, opt.sub ? opt.sub(L, sideOf(assign, L)) : null)));
+    };
+    draw(); wrap.redraw = draw;
+    return wrap;
+  }
+  function shot(src, cap, gallery, i) {
+    const d = el('div', { class: 'shot' }, el('img', { src, alt: cap, loading: 'lazy', decoding: 'async' }), el('span', { class: 'zoom' }, tr('tapZoom')));
+    d.addEventListener('click', () => openLB(gallery || [{ src, cap }], i || 0));
+    return d;
+  }
+
+  // ---------- map ----------
+  function mapView(map, lines, od) {
+    const box = el('div', { class: 'map' }, el('img', { src: map.img, alt: '', width: map.w, height: map.h }));
+    const svg = svgEl('svg', { viewBox: `0 0 ${map.w} ${map.h}`, 'aria-hidden': 'true' });
+    for (const ln of lines) {
+      const pts = ln.path.map((p) => p.join(',')).join(' ');
+      if (ln.halo) svg.append(svgEl('polyline', { points: pts, fill: 'none', stroke: '#fff', 'stroke-width': ln.w + 6, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
+      svg.append(svgEl('polyline', { points: pts, fill: 'none', stroke: ln.color, 'stroke-width': ln.w, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': ln.dash || '', opacity: ln.op ?? 1 }));
+      if (ln.label) {
+        const mid = ln.path[Math.floor(ln.path.length * (ln.labelAt || 0.5))];
+        const g = svgEl('g', { transform: `translate(${mid[0]},${mid[1]})` });
+        g.append(svgEl('circle', { r: 24, fill: ln.color, stroke: '#fff', 'stroke-width': 5 }));
+        const tx = svgEl('text', { 'text-anchor': 'middle', dy: 10, fill: '#fff', 'font-size': 30, 'font-weight': 700, 'font-family': 'Arial, sans-serif' }); tx.textContent = ln.label;
+        g.append(tx); svg.append(g);
+      }
+    }
+    for (const mk of (lines.marks || [])) {                      // 照片位置编号点
+      const g = svgEl('g', { transform: `translate(${mk.p[0]},${mk.p[1]})` });
+      g.append(svgEl('circle', { r: 17, fill: mk.color, stroke: '#fff', 'stroke-width': 4 }));
+      const tx = svgEl('text', { 'text-anchor': 'middle', dy: 8, fill: '#fff', 'font-size': 22, 'font-weight': 700, 'font-family': 'Arial, sans-serif' }); tx.textContent = mk.n;
+      g.append(tx); svg.append(g);
+    }
+    if (od) {
+      const [o, d] = od;
+      svg.append(svgEl('circle', { cx: o[0], cy: o[1], r: 16, fill: '#fff', stroke: '#111', 'stroke-width': 7 }));
+      const sq = svgEl('rect', { x: d[0] - 16, y: d[1] - 16, width: 32, height: 32, rx: 5, fill: '#111', stroke: '#fff', 'stroke-width': 4 }); svg.append(sq);
+      for (const [p, txt] of [[o, tr('start_')], [d, tr('dest')]]) {
+        const above = p[1] > 60;
+        const t = svgEl('text', { x: p[0], y: p[1] + (above ? -30 : 58), 'text-anchor': 'middle', 'font-size': 34, 'font-weight': 700, 'font-family': 'Arial, sans-serif', fill: '#111', stroke: '#fff', 'stroke-width': 9, 'paint-order': 'stroke' });
+        t.textContent = txt; svg.append(t);
+      }
+    }
+    box.append(svg);
+    return box;
+  }
+
+  // ---------- intro ----------
+  function rIntro() {
+    put(
+      el('h1', {}, tr('introTitle')),
+      el('p', { class: 'lead' }, tr('introLead')),
+      el('ul', { class: 'plain' }, ...tr('introList').map((x) => el('li', {}, x))),
+      el('p', { class: 'note' }, tr('consent')),
+      CONTACT[S.lang] ? el('p', { class: 'note' }, CONTACT[S.lang]) : null,
+      S._resumed ? el('p', { class: 'note' }, tr('resumed')) : null);
+  }
+
+  function rQ0() {
+    const a = S.answers.q0;
+    put(...head(tr('part1'), tr('q0Title')),
+      el('div', { class: 'field' }, el('span', { class: 'label' }, tr('gender')), radios(tr('genderOpts'), GENDER, a.gender, (v) => { a.gender = v; }, true)),
+      el('div', { class: 'field' }, el('span', { class: 'label' }, tr('age')), radios(tr('ageOpts'), AGE, a.age, (v) => { a.age = v; }, true)));
+  }
+
+  // 四类遮荫设施:2 列 × 2 行,图下标英文名(中文界面再加一行中文);点击放大
+  const facLabel = (f) => (S.lang === 'zh' ? `${f.name.en} · ${f.name.zh}` : f.name.en);
+  const facSrc = (f, hl) => (hl && f.img_hl ? f.img_hl : f.img);       // hl:设施彩色、其余黑白(Q2)
+  function facGallery(hl) { return C.facilities.map((f) => ({ src: facSrc(f, hl), cap: `${facLabel(f)} — ${f.desc[S.lang]}` })); }
+  function facGrid(hl) {
+    return el('div', { class: 'fac-grid' }, ...C.facilities.map((f, i) => {
+      const fig = el('figure', {}, el('img', { src: facSrc(f, hl), alt: f.name.en }),
+        el('figcaption', {}, el('b', {}, f.name.en), S.lang === 'zh' ? el('span', {}, f.name.zh) : null));
+      fig.querySelector('img').addEventListener('click', () => openLB(facGallery(hl), i));
+      return fig;
+    }));
+  }
+  function rQ1() { put(...head(tr('part1'), tr('q1Title'), tr('q1Lead')), facGrid(), radios(tr('q1Opts'), Q1V, S.answers.q1, (v) => { S.answers.q1 = v; })); }
+  function rQ2() { put(...head(tr('part1'), tr('q2Title')), facGrid(true), radios(tr('q2Opts'), Q2V, S.answers.q2, (v) => { S.answers.q2 = v; })); }
+  function rQ3() { put(...head(tr('part1'), tr('q3Title')), facGrid(), radios(tr('q3Opts'), Q3V, S.answers.q3, (v) => { S.answers.q3 = v; })); }
+  function rQ4() { put(...head(tr('part1'), tr('q4Title')), radios(tr('q4Opts'), Q4V, S.answers.q4, (v) => { S.answers.q4 = v; }, true)); }
+
+  // ---------- Q5 / Q6 ----------
+  function rQ5() {
+    put(...head(tr('part2'), tr('q5Title')), el('div', { class: 'scene', html: tr('q5Scene') }),
+      routePair('q5', S.answers, S.assignA.q56, (L, side) => el('p', { class: 'rtext' }, side === 'short' ? tr('q5Short') : tr('q5Cool'))));
+  }
+  function metricBody(m, ref) {
+    const isLonger = m.extra > 0;
+    const shadePct = Math.max(0, Math.min(100, m.sigma));
+    return [
+      el('div', { class: 'mgrid' },
+        el('div', {}, el('span', { class: 'k' }, tr('mTime')), el('span', { class: 'v' }, tr('mMin', Math.round(m.min)))),
+        el('div', {}, el('span', { class: 'k' }, tr('mDist')), el('span', { class: 'v' }, `${fmt(m.len)} m`, isLonger ? el('span', { class: 'delta' }, ' ' + tr('mExtra', m.extra, m.extra_pct)) : null)),
+        el('div', {}, el('span', { class: 'k' }, tr('mShade')), el('span', { class: 'v' }, `${m.sigma}%`)),
+        el('div', {}, el('span', { class: 'k' }, tr('mSun')), el('span', { class: 'v' }, `${fmt(m.sun)} m`)),
+        el('div', {}, el('span', { class: 'k' }, tr('mLong')), el('span', { class: 'v' }, `${fmt(m.lsun)} m`))),
+      el('div', { class: 'shadebar', role: 'img', 'aria-label': `${tr('mShade')} ${m.sigma}%` }, el('i', { style: `width:${shadePct}%` })),
+      el('div', { class: 'shadekey' }, el('span', {}, el('i', { style: 'background:#6E8FA8' }), tr('shaded')), el('span', {}, el('i', { style: 'background:#F2C46B' }), tr('sunny'))),
+    ];
+  }
+  function rQ6() {
+    const q = C.q56, A = S.assignA.q56;
+    const lines = ['B', 'A'].map((L) => ({ path: q.routes[sideOf(A, L)].path, color: L === 'A' ? '#7C3AED' : '#1F2937', w: 9, halo: true, label: L, labelAt: L === 'A' ? 0.45 : 0.6 }));
+    const p0 = q.routes.short.path;
+    put(...head(tr('part2'), tr('q6Title')), el('div', { class: 'scene', html: tr('q6Scene') }),
+      mapView(q.map, lines, [p0[0], p0[p0.length - 1]]),
+      el('div', { class: 'legend' }, ...['A', 'B'].map((L) => el('span', {}, el('i', { style: `background:${L === 'A' ? '#7C3AED' : '#1F2937'}` }), tr('route', L)))),
+      routePair('q6', S.answers, A, (L, side) => metricBody(q.routes[side].m)),
+      el('p', { class: 'note' }, tr('q6Note')));
+  }
+
+  // ---------- Q7 / Q8 ----------
+  const scen = (sid) => C.scenarios.find((s) => s.sid === sid);
+  function originText(s) { const m = I18N.origin[S.lang]; return m[(s.od && s.od.from_) || 'other'] || m.other; }
+  const RC = { A: '#7C3AED', B: '#1F2937' };
+  function scenMap(s, A, withMarks) {
+    const lines = ['B', 'A'].map((L) => ({ path: s.routes[sideOf(A, L)].path, color: RC[L], w: 9, halo: true, label: withMarks ? null : L, labelAt: L === 'A' ? 0.45 : 0.6 }));
+    if (withMarks) lines.marks = ['B', 'A'].flatMap((L) => s.routes[sideOf(A, L)].marks.map((p, i) => ({ p, n: i + 1, color: RC[L] })));
+    const p0 = s.routes.short.path;
+    return [mapView(s.map, lines, [p0[0], p0[p0.length - 1]]),
+      el('div', { class: 'legend' }, ...['A', 'B'].map((L) => { const m = s.routes[sideOf(A, L)].m; return el('span', {}, el('i', { style: `background:${RC[L]}` }), `${tr('route', L)} · ${tr('lenTime', fmt(m.len), Math.round(m.min))}`); }))];
+  }
+  const lenSub = (s) => (L, side) => tr('lenTime', fmt(s.routes[side].m.len), Math.round(s.routes[side].m.min));
+  function rQ7(sc) {
+    const s = scen(sc.sid), A = S.assignA[sc.sid];
+    const gal = ['A', 'B'].map((L) => ({ src: s.routes[sideOf(A, L)].start, cap: `${tr('route', L)} — ${tr('q7Cap')}` }));
+    put(...head(tr('part3'), tr('q7Title')), el('div', { class: 'scene', html: tr('q7Scene', originText(s)) }), ...scenMap(s, A, false),
+      routePair(sc.sid, S.answers.q7, A, (L, side) => shot(s.routes[side].start, tr('q7Cap'), gal, L === 'A' ? 0 : 1), { sub: lenSub(s) }));
+  }
+  function rQ8(sc) {
+    const s = scen(sc.sid), A = S.assignA[sc.sid];
+    const n = { A: s.routes[sideOf(A, 'A')].seq.length, B: s.routes[sideOf(A, 'B')].seq.length };
+    const allSeen = () => ['A', 'B'].every((L) => new Set(S.seen8[L]).size >= n[L]);
+    const counters = {};
+    const hint = el('p', { class: 'note viewall' }, allSeen() ? '' : tr('viewAll'));
+    let pair = null;
+    const markSeen = (L, i) => {                                   // 照片在屏幕上露出 ≥60% 或在放大视图里打开过,即算看过
+      if (S.seen8[L].includes(i)) return;
+      const was = allSeen(); S.seen8[L].push(i); save();
+      if (counters[L]) counters[L].textContent = tr('viewed', new Set(S.seen8[L]).size, n[L]);
+      if (!was && allSeen()) { hint.textContent = ''; if (pair) pair.redraw(); }
+    };
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver((ents) => ents.forEach((e) => {
+      if (e.isIntersecting && e.intersectionRatio >= 0.6) markSeen(e.target.dataset.l, Number(e.target.dataset.i));
+    }), { threshold: [0.6] }) : null;
+    pair = routePair(sc.sid, S.answers.q8, A, (L, side) => {
+      const seq = s.routes[side].seq, nn = seq.length;
+      const gal = seq.map((src, i) => ({ src, cap: `${tr('route', L)} · ${tr('photoN', i + 1, nn)}`, onShow: () => markSeen(L, i) }));
+      counters[L] = el('span', { class: 'seen' }, tr('viewed', new Set(S.seen8[L]).size, nn));
+      return [el('div', { class: 'strip-hint' }, tr('nPhotos', nn), ' · ', counters[L]),
+        el('div', { class: 'strip' }, ...seq.map((src, i) => {
+          const fig = el('figure', { 'data-l': L, 'data-i': i }, el('img', { src, alt: gal[i].cap, loading: i < 2 ? 'eager' : 'lazy', decoding: 'async' }), el('figcaption', {}, tr('photoN', i + 1, nn)));
+          fig.querySelector('img').addEventListener('click', () => openLB(gal, i));
+          if (io) io.observe(fig); else markSeen(L, i);
+          return fig;
+        }))];
+    }, { locked: () => !allSeen(), sub: lenSub(s) });
+    put(...head(tr('part3b'), tr('q8Title')), el('div', { class: 'scene', html: tr('q8Scene', S.answers.q7[sc.sid]) }), ...scenMap(s, A, true), hint, pair);
+  }
+
+  // ---------- Q9 ----------
+  function rQ9(sc) {
+    const q = C.q9s.find((e) => e.eid === sc.eid), lv = q.levels, N = lv.length, eid = sc.eid;
+    const visits = S.q9visits[eid] || (S.q9visits[eid] = []);
+    const shortest = lv[N - 1].m, maxExtra = lv[0].m.extra, maxSun = shortest.sun;
+    const mapBox = el('div');
+    const panel = el('div', { class: 'panel' });
+    const drawMap = (k) => {
+      const lines = lv.map((x, i) => ({ path: x.path, color: '#8F877A', w: 5, op: 0.45 }));
+      if (k) lines.push({ path: lv[k - 1].path, color: '#7C3AED', w: 10, halo: true });
+      const p0 = lv[N - 1].path;
+      mapBox.replaceChildren(mapView(q.map, lines, [p0[0], p0[p0.length - 1]]));
+    };
+    const drawPanel = (k) => {
+      if (!k) { panel.className = 'panel empty'; panel.replaceChildren(tr('q9Empty')); return; }
+      const m = lv[k - 1].m; panel.className = 'panel';
+      const sunDelta = m.sun - shortest.sun, shDelta = m.sigma - shortest.sigma;
+      const rows = [
+        [tr('q9Detour'), m.extra > 0 ? `+${fmt(m.extra)} m` : `0 m · ${tr('q9Shortest')}`],
+        [tr('q9Sun'), `${fmt(m.sun)} m`, sunDelta ? tr('q9vsShort', `${sunDelta > 0 ? '+' : '−'}${fmt(Math.abs(sunDelta))} m`) : ''],
+        [tr('q9Shade'), `${m.sigma}%`, shDelta ? tr('q9vsShort', `${shDelta > 0 ? '+' : '−'}${Math.abs(shDelta)}${S.lang === 'zh' ? ' 个百分点' : ' pp'}`) : ''],
+        [tr('q9DetourRate'), `+${m.extra_pct}%`, m.extra > 0 ? '' : tr('q9Shortest')],
+        [tr('q9Time'), tr('mMin', Math.round(m.min))],
+      ];
+      const bars = el('div', { style: 'margin:10px 0 2px;display:grid;gap:6px' }, ...[[tr('q9Bars')[0], m.extra, maxExtra, '#6E8FA8'], [tr('q9Bars')[1], m.sun, maxSun, '#E8A33D']].map(([lab, v, mx, col]) =>
+        el('div', { style: 'display:grid;grid-template-columns:64px 1fr 64px;align-items:center;gap:8px;font-size:13px' },
+          el('span', { style: 'color:var(--muted)' }, lab),
+          el('span', { style: 'height:10px;background:#EEEBE4;border-radius:5px;overflow:hidden' }, el('i', { style: `display:block;height:100%;width:${mx ? (100 * v) / mx : 0}%;background:${col}` })),
+          el('span', { style: 'text-align:right;font-variant-numeric:tabular-nums' }, `${fmt(v)} m`))));
+      panel.replaceChildren(el('h3', {}, tr('q9Option', k)),
+        ...rows.map(([k_, v, d]) => el('div', { class: 'row' }, el('span', {}, k_), el('span', { class: 'v' }, v, d ? el('div', { class: 'delta' }, d) : null))), bars);
+    };
+    // slider
+    const track = el('div', { class: 'track' }, el('div', { class: 'rail' }));
+    const stops = lv.map((x, i) => {
+      const b = el('button', { type: 'button', class: 'stop', role: 'radio', 'aria-label': tr('q9Option', i + 1), 'aria-checked': String(S.answers.q9[eid] === i + 1), style: `left:calc(14px + (100% - 28px) * ${i / (N - 1)})` });
+      b.addEventListener('click', () => choose(i + 1));
+      track.append(b); return b;
+    });
+    const choose = (k) => {
+      if (S.answers.q9[eid] === k) return;
+      S.answers.q9[eid] = k; visits.push([k, now()]);
+      stops.forEach((b, i) => b.setAttribute('aria-checked', String(i + 1 === k)));
+      drawMap(k); drawPanel(k); answered();
+    };
+    const fromX = (x) => { const r = track.getBoundingClientRect(); const f = (x - r.left - 14) / (r.width - 28); return Math.max(1, Math.min(N, Math.round(f * (N - 1)) + 1)); };
+    let drag = false;
+    track.addEventListener('pointerdown', (e) => { drag = true; try { track.setPointerCapture(e.pointerId); } catch (_) { } choose(fromX(e.clientX)); });
+    track.addEventListener('pointermove', (e) => { if (drag) choose(fromX(e.clientX)); });
+    track.addEventListener('pointerup', () => { drag = false; });
+    track.addEventListener('pointercancel', () => { drag = false; });
+    track.addEventListener('keydown', (e) => {
+      const k = S.answers.q9[eid] || Math.ceil(N / 2);
+      if (e.key === 'ArrowLeft') { choose(Math.max(1, k - 1)); e.preventDefault(); }
+      if (e.key === 'ArrowRight') { choose(Math.min(N, k + 1)); e.preventDefault(); }
+    });
+    const slider = el('div', { class: 'slider', role: 'radiogroup' }, track,
+      el('div', { class: 'ends' }, el('span', {}, tr('q9Left', fmt(maxExtra))), el('span', {}, tr('q9Right', fmt(maxSun)))));
+    put(...head(tr('part4', sc.k, sc.n), tr('q9Title')), el('div', { class: 'scene', html: tr('q9Scene') }), mapBox, el('p', { class: 'note' }, tr('q9How')), slider, panel);
+    drawMap(S.answers.q9[eid]); drawPanel(S.answers.q9[eid]);
+  }
+
+  // ---------- submit / end ----------
+  function payload() {
+    const A = S.assignA, a = S.answers;
+    const pick = (assign, letter) => (letter ? sideOf(assign, letter) : null);
+    const out = {
+      v: VERSION, rid: S.rid, lang: S.lang, langSwitches: S.langSwitches, started: S.started, finished: new Date().toISOString(),
+      ua: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio || 1], tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      q0: a.q0, q1: a.q1, q2: a.q2, q3: a.q3, q4: a.q4,
+      q5: { letter: a.q5, route: pick(A.q56, a.q5), A: A.q56 },
+      q6: { letter: a.q6, route: pick(A.q56, a.q6), A: A.q56 },
+      q9: Object.fromEntries(C.q9s.map((e) => [e.eid, { level: a.q9[e.eid], lam: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam : null,
+        pos: S.q9order.indexOf(e.eid) + 1, visits: (S.q9visits[e.eid] || []).length, path: (S.q9visits[e.eid] || []).map((x) => x[0]) }])),
+      q8seen: { A: new Set(S.seen8.A).size, B: new Set(S.seen8.B).size },
+      timing: Object.fromEntries(Object.entries(S.timing).map(([k, t]) => [k, { ms: t.ms, first: t.first, views: t.views }])),
+    };
+    const sc = scen(S.sit), Ax = A[S.sit];
+    out.situation = S.sit; out.situation_cls = sc.cls;
+    out.q7 = { letter: a.q7[S.sit], route: pick(Ax, a.q7[S.sit]), A: Ax };
+    out.q8 = { letter: a.q8[S.sit], route: pick(Ax, a.q8[S.sit]), A: Ax };
+    return out;
+  }
+  async function submit(box) {
+    box.replaceChildren(el('p', { class: 'center lead' }, tr('sending')));
+    try {
+      if (!API) throw new Error('submitUrl not configured');
+      // text/plain = "simple" request: no CORS preflight, which Google Apps Script cannot answer
+      const body = JSON.stringify(payload()), opt = { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body };
+      let ok = false;
+      try {
+        const res = await fetch(API, opt);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json().catch(() => ({ ok: true }));
+        if (j.ok === false) throw new Error(j.error || 'rejected');
+        ok = true;
+      } catch (e1) {
+        if (!(e1 instanceof TypeError)) throw e1;            // TypeError = response unreadable (CORS) or offline
+        await fetch(API, { ...opt, mode: 'no-cors' });         // opaque retry; the sheet de-duplicates by rid
+        ok = true;
+      }
+      if (!ok) throw new Error('not saved');
+      S._sent = true; setDone(); thanks(box);
+    } catch (e) {
+      box.replaceChildren(el('p', { class: 'err' }, tr('sendFail')), el('button', { type: 'button', class: 'next', onclick: () => submit(box) }, tr('retry')));
+    }
+  }
+  function thanks(box) {
+    box.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('h1', { class: 'center' }, tr('thanks')), el('p', { class: 'center lead' }, tr('thanksLead')),
+      el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, S.rid.slice(0, 8).toUpperCase())));
+  }
+  function rEnd() { const box = el('div'); put(box); if (S._sent) thanks(box); else submit(box); }
+  function rAlready() {
+    $('bottom').hidden = true;
+    main.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('p', { class: 'center' }, tr('already')),
+      el('p', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn', onclick: () => { try { localStorage.removeItem(DONE); } catch (e) { } boot(true); } }, tr('again'))));
+  }
+
+  // ---------- lightbox ----------
+  let LB = null;
+  function openLB(gallery, i) { LB = { g: gallery, i }; showLB(); $('lightbox').hidden = false; }
+  function showLB() {
+    const { g, i } = LB; $('lbImg').src = g[i].src; $('lbImg').alt = g[i].cap; $('lbCap').textContent = g[i].cap;
+    if (g[i].onShow) g[i].onShow();
+    $('lbPrev').hidden = i === 0; $('lbNext').hidden = i === g.length - 1;
+  }
+  $('lbClose').addEventListener('click', () => { $('lightbox').hidden = true; });
+  $('lbPrev').addEventListener('click', (e) => { e.stopPropagation(); if (LB.i > 0) { LB.i--; showLB(); } });
+  $('lbNext').addEventListener('click', (e) => { e.stopPropagation(); if (LB.i < LB.g.length - 1) { LB.i++; showLB(); } });
+  $('lightbox').addEventListener('click', (e) => { if (e.target.id === 'lightbox' || e.target.id === 'lbImg') $('lightbox').hidden = true; });
+  let tx0 = null;
+  $('lightbox').addEventListener('touchstart', (e) => { tx0 = e.touches[0].clientX; }, { passive: true });
+  $('lightbox').addEventListener('touchend', (e) => {
+    if (tx0 == null || !LB) return; const dx = e.changedTouches[0].clientX - tx0; tx0 = null;
+    if (Math.abs(dx) > 50) { if (dx < 0 && LB.i < LB.g.length - 1) LB.i++; else if (dx > 0 && LB.i > 0) LB.i--; showLB(); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('lightbox').hidden = true; });
+
+  // ---------- preload ----------
+  function imgsFor(sc) {
+    if (!sc) return [];
+    if (sc.id.startsWith('q7_')) { const s = scen(sc.sid); return [s.map.img, s.routes.short.start, s.routes.cool.start]; }
+    if (sc.id.startsWith('q8_')) { const s = scen(sc.sid); return [...s.routes.short.seq.slice(0, 2), ...s.routes.cool.seq.slice(0, 2)]; }
+    if (sc.id === 'q6') return [C.q56.map.img];
+    if (sc.id.startsWith('q9_')) return [C.q9s.find((e) => e.eid === sc.eid).map.img];
+    if (sc.id === 'q1') return C.facilities.map((f) => f.img);
+    if (sc.id === 'q2') return C.facilities.map((f) => f.img_hl || f.img);
+    return [];
+  }
+  function preloadAhead() {
+    for (const sc of screens.slice(S.idx + 1, S.idx + 3)) {
+      if (sc.id.startsWith('q8_')) continue;   // 全程照片只在进入 Q8 后才加载,Q7 作答时浏览器里没有任何全程图片
+      for (const src of imgsFor(sc)) { const im = new Image(); im.src = src; }
+    }
+  }
+
+  // ---------- boot ----------
+  $('next').addEventListener('click', next);
+  document.querySelectorAll('.lang button').forEach((b) => b.addEventListener('click', () => {
+    if (!S || S.lang === b.dataset.lang) return;
+    S.lang = b.dataset.lang; S.langSwitches += 1; leave(); render();
+  }));
+  history.pushState({ s: 1 }, '', location.href);
+  window.addEventListener('popstate', () => { history.pushState({ s: 1 }, '', location.href); $('hint').textContent = tr('noBack'); });
+
+  async function boot(fresh) {
+    if (!C) {
+      try { const r = await fetch('content.json?v=' + VERSION, { cache: 'no-cache' }); C = await r.json(); }
+      catch (e) { main.replaceChildren(el('p', { class: 'err' }, I18N.loadFail.en + ' / ' + I18N.loadFail.zh)); $('bottom').hidden = true; return; }
+    }
+    const old = fresh ? null : load();
+    if (old && old.v === VERSION && old.rid) { S = old; S._resumed = S.idx > 0; }
+    else { S = newState(); }
+    if (!fresh && !old && isDone()) { S = newState(); $('brand').textContent = tr('brand'); rAlready(); return; }
+    buildScreens();
+    if (S.idx >= screens.length - 1) S.idx = screens.length - 1;   // resume on the submit screen -> retries submission
+    render(); preloadAhead();
+  }
+  boot(false);
+})();

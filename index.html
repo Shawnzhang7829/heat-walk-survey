@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="robots" content="noindex">
+<title>Walking in the Heat</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='14' fill='%23E8A33D'/%3E%3Cg stroke='%23E8A33D' stroke-width='5' stroke-linecap='round'%3E%3Cpath d='M32 4v8M32 52v8M4 32h8M52 32h8M12 12l6 6M46 46l6 6M12 52l6-6M46 18l6-6'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="survey.css?v=1011v4">
+</head>
+<body>
+<header class="top">
+  <div class="top-row">
+    <span class="brand" id="brand"></span>
+    <span class="step" id="step"></span>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" data-lang="zh">中文</button>
+    </div>
+  </div>
+  <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+</header>
+<main id="screen" tabindex="-1"></main>
+<footer class="bottom" id="bottom">
+  <p class="hint" id="hint"></p>
+  <button type="button" class="next" id="next"></button>
+</footer>
+<div class="lightbox" id="lightbox" hidden>
+  <button type="button" class="lb-close" id="lbClose" aria-label="Close">×</button>
+  <button type="button" class="lb-nav lb-prev" id="lbPrev" aria-label="Previous">‹</button>
+  <img id="lbImg" alt="">
+  <button type="button" class="lb-nav lb-next" id="lbNext" aria-label="Next">›</button>
+  <p class="lb-cap" id="lbCap"></p>
+</div>
+<noscript><p style="padding:24px">Please enable JavaScript to take this survey. / 请启用 JavaScript 后作答。</p></noscript>
+<script src="config.js?v=1011v4"></script>
+<script src="survey.js?v=1011v4"></script>
+</body>
+</html>
