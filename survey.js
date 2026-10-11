@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1011v4b';
+  const VERSION = '1011v4c';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const CFG = window.SURVEY_CONFIG || {};                 // config.js:提交地址(Google Apps Script Web App)与联系方式
@@ -473,6 +473,15 @@
     const shortest = lv[N - 1].m, maxExtra = lv[0].m.extra, maxSun = shortest.sun;
     const mapBox = el('div');
     const panel = el('div', { class: 'panel' });
+    const barsBox = el('div', { class: 'q9bars' });
+    const drawBars = (k) => {                                      // 滑块正下方的"绕行 / 暴晒"柱状图
+      const m = k ? lv[k - 1].m : null;
+      barsBox.replaceChildren(...[[tr('q9Bars')[0], m && m.extra, maxExtra, '#6E8FA8'], [tr('q9Bars')[1], m && m.sun, maxSun, '#E8A33D']].map(([lab, v, mx, col]) =>
+        el('div', { class: 'q9bar' },
+          el('span', { class: 'lab' }, lab),
+          el('span', { class: 'track' }, el('i', { style: `width:${m && mx ? (100 * v) / mx : 0}%;background:${col}` })),
+          el('span', { class: 'val' }, m ? `${fmt(v)} m` : '–'))));
+    };
     const drawMap = (k) => {
       const lines = lv.map((x, i) => ({ path: x.path, color: '#8F877A', w: 5, op: 0.45 }));
       if (k) lines.push({ path: lv[k - 1].path, color: '#7C3AED', w: 10, halo: true });
@@ -490,13 +499,8 @@
         [tr('q9DetourRate'), `+${m.extra_pct}%`, m.extra > 0 ? '' : tr('q9Shortest')],
         [tr('q9Time'), tr('mMin', Math.round(m.min))],
       ];
-      const bars = el('div', { style: 'margin:10px 0 2px;display:grid;gap:6px' }, ...[[tr('q9Bars')[0], m.extra, maxExtra, '#6E8FA8'], [tr('q9Bars')[1], m.sun, maxSun, '#E8A33D']].map(([lab, v, mx, col]) =>
-        el('div', { style: 'display:grid;grid-template-columns:64px 1fr 64px;align-items:center;gap:8px;font-size:13px' },
-          el('span', { style: 'color:var(--muted)' }, lab),
-          el('span', { style: 'height:10px;background:#EEEBE4;border-radius:5px;overflow:hidden' }, el('i', { style: `display:block;height:100%;width:${mx ? (100 * v) / mx : 0}%;background:${col}` })),
-          el('span', { style: 'text-align:right;font-variant-numeric:tabular-nums' }, `${fmt(v)} m`))));
       panel.replaceChildren(el('h3', {}, tr('q9Option', k)),
-        ...rows.map(([k_, v, d]) => el('div', { class: 'row' }, el('span', {}, k_), el('span', { class: 'v' }, v, d ? el('div', { class: 'delta' }, d) : null))), bars);
+        ...rows.map(([k_, v, d]) => el('div', { class: 'row' }, el('span', {}, k_), el('span', { class: 'v' }, v, d ? el('div', { class: 'delta' }, d) : null))));
     };
     // slider
     const track = el('div', { class: 'track' }, el('div', { class: 'rail' }));
@@ -509,7 +513,7 @@
       if (S.answers.q9[eid] === k) return;
       S.answers.q9[eid] = k; visits.push([k, now()]);
       stops.forEach((b, i) => b.setAttribute('aria-checked', String(i + 1 === k)));
-      drawMap(k); drawPanel(k); answered();
+      drawMap(k); drawBars(k); drawPanel(k); answered();
     };
     const fromX = (x) => { const r = track.getBoundingClientRect(); const f = (x - r.left - 14) / (r.width - 28); return Math.max(1, Math.min(N, Math.round(f * (N - 1)) + 1)); };
     let drag = false;
@@ -524,8 +528,8 @@
     });
     const slider = el('div', { class: 'slider', role: 'radiogroup' }, track,
       el('div', { class: 'ends' }, el('span', {}, tr('q9Left', fmt(maxExtra))), el('span', {}, tr('q9Right', fmt(maxSun)))));
-    put(...head(tr('part4', sc.k, sc.n), tr('q9Title')), el('div', { class: 'scene', html: tr('q9Scene') }), mapBox, el('p', { class: 'note' }, tr('q9How')), slider, panel);
-    drawMap(S.answers.q9[eid]); drawPanel(S.answers.q9[eid]);
+    put(...head(tr('part4', sc.k, sc.n), tr('q9Title')), el('div', { class: 'scene', html: tr('q9Scene') }), mapBox, el('p', { class: 'note' }, tr('q9How')), slider, barsBox, panel);
+    drawMap(S.answers.q9[eid]); drawBars(S.answers.q9[eid]); drawPanel(S.answers.q9[eid]);
   }
 
   // ---------- submit / end ----------

@@ -176,3 +176,10 @@ ul.plain li { margin: 4px 0; }
 .strip-hint .seen { font-weight: 600; color: var(--accent); }
 .note.viewall { color: var(--warn); font-weight: 600; margin: 0 0 10px; }
 .note.viewall:empty { display: none; }
+
+.q9bars { display: grid; gap: 7px; margin: 10px 4px 4px; }
+.q9bar { display: grid; grid-template-columns: 64px 1fr 64px; align-items: center; gap: 8px; font-size: 13px; }
+.q9bar .lab { color: var(--muted); }
+.q9bar .track { height: 12px; background: #EEEBE4; border-radius: 6px; overflow: hidden; }
+.q9bar .track i { display: block; height: 100%; transition: width .2s ease; }
+.q9bar .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
