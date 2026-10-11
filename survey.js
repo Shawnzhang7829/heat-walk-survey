@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v6';
+  const VERSION = '1012v7';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const CFG = window.SURVEY_CONFIG || {};                 // config.js:提交地址(Google Apps Script Web App)与联系方式
@@ -186,7 +186,7 @@
     return {
       v: VERSION, rid: uuid(), lang, idx: 0, started: new Date().toISOString(), langSwitches: 0,
       assignA: A,                        // which true route is shown as "A"
-      order7: shuffle(sids),                                // 5 个情境全部作答,顺序随机
+      order7: shuffle(sids),                                // 3 个情境全部作答,顺序随机
       q9order: shuffle(C.q9s.map((e) => e.eid)),            // 第 9 题 3 个例子随机顺序
       answers: { q0: {}, q7: {}, q8: {}, q9: {} }, q9visits: {}, seen8: {},
       timing: {},
