@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1011v4c';
+  const VERSION = '1011v4d';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const CFG = window.SURVEY_CONFIG || {};                 // config.js:提交地址(Google Apps Script Web App)与联系方式
@@ -122,7 +122,7 @@
     q9Bars: { en: ['Detour', 'In the sun'], zh: ['绕行', '暴晒'] },
 
     sending: { en: 'Submitting your answers…', zh: '正在提交答案……' },
-    sendFail: { en: 'Could not reach the server. Your answers are kept on this device — please check your connection and try again.', zh: '无法连接服务器。答案已保存在本机，请检查网络后重试。' },
+    sendFail: { en: 'Your answers could not be saved yet. They are kept on this device — please check your connection and tap “Try again”.', zh: '答案暂未保存成功（已暂存在本机）。请检查网络后点「重试」。' },
     retry: { en: 'Try again', zh: '重试' },
     thanks: { en: 'Thank you!', zh: '谢谢参与！' },
     thanksLead: { en: 'Your answers have been saved.', zh: '你的答案已保存。' },
@@ -559,22 +559,14 @@
       if (!API) throw new Error('submitUrl not configured');
       // text/plain = "simple" request: no CORS preflight, which Google Apps Script cannot answer
       const body = JSON.stringify(payload()), opt = { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body };
-      let ok = false;
-      try {
-        const res = await fetch(API, opt);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const j = await res.json().catch(() => ({ ok: true }));
-        if (j.ok === false) throw new Error(j.error || 'rejected');
-        ok = true;
-      } catch (e1) {
-        if (!(e1 instanceof TypeError)) throw e1;            // TypeError = response unreadable (CORS) or offline
-        await fetch(API, { ...opt, mode: 'no-cors' });         // opaque retry; the sheet de-duplicates by rid
-        ok = true;
-      }
-      if (!ok) throw new Error('not saved');
+      const res = await fetch(API, opt);                     // 必须读到回执 {"ok":true} 才算保存成功
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const j = await res.json();
+      if (!j || j.ok !== true) throw new Error((j && j.error) || 'not saved');
       S._sent = true; setDone(); thanks(box);
     } catch (e) {
-      box.replaceChildren(el('p', { class: 'err' }, tr('sendFail')), el('button', { type: 'button', class: 'next', onclick: () => submit(box) }, tr('retry')));
+      box.replaceChildren(el('p', { class: 'err' }, tr('sendFail')), el('p', { class: 'note' }, `(${String((e && e.message) || e).slice(0, 120)})`),
+        el('button', { type: 'button', class: 'next', onclick: () => submit(box) }, tr('retry')));
     }
   }
   function thanks(box) {
