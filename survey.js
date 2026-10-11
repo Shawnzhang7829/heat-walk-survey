@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1011v4d';
+  const VERSION = '1012v5';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const CFG = window.SURVEY_CONFIG || {};                 // config.js:提交地址(Google Apps Script Web App)与联系方式
@@ -33,8 +33,8 @@
       en: 'We are researchers studying how people in Singapore walk on hot days, and how shade facilities (arcades / five-foot ways, covered linkways, covered overhead bridges and inter-building corridors) and trees affect which way they go.',
       zh: '我们正在研究新加坡居民在炎热天气中的步行方式，以及骑楼（五脚基）、有顶连廊、有顶人行天桥、楼间连廊等遮荫设施和行道树如何影响人们的路线选择。' },
     introList: {
-      en: ['About 5–8 minutes, 10 questions', 'Anonymous: we do not collect your name, contact details or location', 'Every question needs an answer; you can go back to change earlier answers'],
-      zh: ['约 5–8 分钟，共 10 题', '匿名作答：不收集姓名、联系方式或位置', '每题必答；可以返回上一题修改答案'] },
+      en: ['About 8–10 minutes, 10 questions', 'Anonymous: we do not collect your name, contact details or location', 'Every question needs an answer; you can go back to change earlier answers'],
+      zh: ['约 8–10 分钟，共 10 题', '匿名作答：不收集姓名、联系方式或位置', '每题必答；可以返回上一题修改答案'] },
     consent: { en: 'By tapping Start, you agree that your anonymous answers may be used for academic research.', zh: '点击「开始」即表示你同意我们将你的匿名答案用于学术研究。' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
@@ -81,7 +81,7 @@
     sunny: { en: 'in the sun', zh: '暴晒' },
     q6Note: { en: 'Shade coverage = share of the route that is in shade at 2 pm.', zh: '遮荫率 = 下午 2 点时路线上处于阴影中的长度占比。' },
 
-    part3: { en: 'Part 3 · A walking situation · step 1 of 2: the start', zh: '第三部分 · 步行情境 · 第 1 步：起点' },
+    part3: { en: (k, n) => `Part 3 · Situation ${k} of ${n} · step 1 of 2: the start`, zh: (k, n) => `第三部分 · 情境 ${k}/${n} · 第 1 步：起点` },
     q7Title: { en: 'Which way do you go?', zh: '你会走哪条路？' },
     q7Scene: {
       en: (o) => `<b>${o} About 2 pm, sunny.</b> Two routes lead to your destination. The map shows both routes and their lengths, but you can only see what each route looks like <b>at the start</b>.`,
@@ -91,7 +91,7 @@
       zh: { bus: '你刚下巴士，', mrt: '你刚走出地铁站出口，', hdb: '你正从一栋组屋步行出发，', other: '你正步行出发，' } },
     q7Cap: { en: 'View at the start of the route', zh: '路线起点处的景象' },
 
-    part3b: { en: 'Part 3 · A walking situation · step 2 of 2: whole route', zh: '第三部分 · 步行情境 · 第 2 步：全程' },
+    part3b: { en: (k, n) => `Part 3 · Situation ${k} of ${n} · step 2 of 2: whole route`, zh: (k, n) => `第三部分 · 情境 ${k}/${n} · 第 2 步：全程` },
     q8Title: { en: 'Now that you can see the whole route, which way do you go?', zh: '现在你能看到整条路线，你会走哪条路？' },
     q8Scene: {
       en: (x) => `<b>Same situation as the previous question.</b> From the start view you chose <b>Route ${x}</b> (this answer is saved). Now you can see each route from start to destination: photos in walking order, about one every 120 m, numbered on the map.<br><b>Please look through all the photos of both routes, and weigh them against the route lengths, before you choose.</b>`,
@@ -184,9 +184,9 @@
     return {
       v: VERSION, rid: uuid(), lang, idx: 0, started: new Date().toISOString(), langSwitches: 0,
       assignA: A,                        // which true route is shown as "A"
-      sit: sids[Math.floor(Math.random() * sids.length)],   // 每人随机分配 1 个情境(5 选 1),问卷保持 10 题
+      order7: shuffle(sids),                                // 5 个情境全部作答,顺序随机
       q9order: shuffle(C.q9s.map((e) => e.eid)),            // 第 9 题 3 个例子随机顺序
-      answers: { q0: {}, q7: {}, q8: {}, q9: {} }, q9visits: {}, seen8: { A: [], B: [] },
+      answers: { q0: {}, q7: {}, q8: {}, q9: {} }, q9visits: {}, seen8: {},
       timing: {},
     };
   }
@@ -203,8 +203,9 @@
       { id: 'q5', render: rQ5, ok: () => !!S.answers.q5 },
       { id: 'q6', render: rQ6, ok: () => !!S.answers.q6 },
       // 同一情境配对:先只看起点(Q7),答案锁定后才显示全程(Q8)
-      { id: 'q7_' + S.sit, sid: S.sit, render: rQ7, ok: () => !!S.answers.q7[S.sit] },
-      { id: 'q8_' + S.sit, sid: S.sit, render: rQ8, ok: () => !!S.answers.q8[S.sit] },
+      ...S.order7.flatMap((sid, k) => [
+        { id: 'q7_' + sid, sid, k: k + 1, n: S.order7.length, render: rQ7, ok: () => !!S.answers.q7[sid] },
+        { id: 'q8_' + sid, sid, k: k + 1, n: S.order7.length, render: rQ8, ok: () => !!S.answers.q8[sid] }]),
       ...S.q9order.map((eid, k) => ({ id: 'q9_' + eid, eid, k: k + 1, n: S.q9order.length, render: rQ9, ok: () => !!S.answers.q9[eid], label: k === S.q9order.length - 1 ? 'submit' : undefined })),
       { id: 'end', render: rEnd, ok: () => false, final: true },
     ];
@@ -432,20 +433,21 @@
   function rQ7(sc) {
     const s = scen(sc.sid), A = S.assignA[sc.sid];
     const gal = ['A', 'B'].map((L) => ({ src: s.routes[sideOf(A, L)].start, cap: `${tr('route', L)} — ${tr('q7Cap')}` }));
-    put(...head(tr('part3'), tr('q7Title')), el('div', { class: 'scene', html: tr('q7Scene', originText(s)) }), ...scenMap(s, A, false),
+    put(...head(tr('part3', sc.k, sc.n), tr('q7Title')), el('div', { class: 'scene', html: tr('q7Scene', originText(s)) }), ...scenMap(s, A, false),
       routePair(sc.sid, S.answers.q7, A, (L, side) => shot(s.routes[side].start, tr('q7Cap'), gal, L === 'A' ? 0 : 1), { sub: lenSub(s) }));
   }
   function rQ8(sc) {
     const s = scen(sc.sid), A = S.assignA[sc.sid];
     const n = { A: s.routes[sideOf(A, 'A')].seq.length, B: s.routes[sideOf(A, 'B')].seq.length };
-    const allSeen = () => ['A', 'B'].every((L) => new Set(S.seen8[L]).size >= n[L]);
+    const seen = S.seen8[sc.sid] || (S.seen8[sc.sid] = { A: [], B: [] });
+    const allSeen = () => ['A', 'B'].every((L) => new Set(seen[L]).size >= n[L]);
     const counters = {};
     const hint = el('p', { class: 'note viewall' }, allSeen() ? '' : tr('viewAll'));
     let pair = null;
     const markSeen = (L, i) => {                                   // 照片在屏幕上露出 ≥60% 或在放大视图里打开过,即算看过
-      if (S.seen8[L].includes(i)) return;
-      const was = allSeen(); S.seen8[L].push(i); save();
-      if (counters[L]) counters[L].textContent = tr('viewed', new Set(S.seen8[L]).size, n[L]);
+      if (seen[L].includes(i)) return;
+      const was = allSeen(); seen[L].push(i); save();
+      if (counters[L]) counters[L].textContent = tr('viewed', new Set(seen[L]).size, n[L]);
       if (!was && allSeen()) { hint.textContent = ''; if (pair) pair.redraw(); }
     };
     const io = 'IntersectionObserver' in window ? new IntersectionObserver((ents) => ents.forEach((e) => {
@@ -454,7 +456,7 @@
     pair = routePair(sc.sid, S.answers.q8, A, (L, side) => {
       const seq = s.routes[side].seq, nn = seq.length;
       const gal = seq.map((src, i) => ({ src, cap: `${tr('route', L)} · ${tr('photoN', i + 1, nn)}`, onShow: () => markSeen(L, i) }));
-      counters[L] = el('span', { class: 'seen' }, tr('viewed', new Set(S.seen8[L]).size, nn));
+      counters[L] = el('span', { class: 'seen' }, tr('viewed', new Set(seen[L]).size, nn));
       return [el('div', { class: 'strip-hint' }, tr('nPhotos', nn), ' · ', counters[L]),
         el('div', { class: 'strip' }, ...seq.map((src, i) => {
           const fig = el('figure', { 'data-l': L, 'data-i': i }, el('img', { src, alt: gal[i].cap, loading: i < 2 ? 'eager' : 'lazy', decoding: 'async' }), el('figcaption', {}, tr('photoN', i + 1, nn)));
@@ -463,7 +465,7 @@
           return fig;
         }))];
     }, { locked: () => !allSeen(), sub: lenSub(s) });
-    put(...head(tr('part3b'), tr('q8Title')), el('div', { class: 'scene', html: tr('q8Scene', S.answers.q7[sc.sid]) }), ...scenMap(s, A, true), hint, pair);
+    put(...head(tr('part3b', sc.k, sc.n), tr('q8Title')), el('div', { class: 'scene', html: tr('q8Scene', S.answers.q7[sc.sid]) }), ...scenMap(s, A, true), hint, pair);
   }
 
   // ---------- Q9 ----------
@@ -544,13 +546,15 @@
       q6: { letter: a.q6, route: pick(A.q56, a.q6), A: A.q56 },
       q9: Object.fromEntries(C.q9s.map((e) => [e.eid, { level: a.q9[e.eid], lam: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam : null,
         pos: S.q9order.indexOf(e.eid) + 1, visits: (S.q9visits[e.eid] || []).length, path: (S.q9visits[e.eid] || []).map((x) => x[0]) }])),
-      q8seen: { A: new Set(S.seen8.A).size, B: new Set(S.seen8.B).size },
+      q8seen: Object.fromEntries(Object.entries(S.seen8).map(([sid, v]) => [sid, { A: new Set(v.A).size, B: new Set(v.B).size }])),
       timing: Object.fromEntries(Object.entries(S.timing).map(([k, t]) => [k, { ms: t.ms, first: t.first, views: t.views }])),
     };
-    const sc = scen(S.sit), Ax = A[S.sit];
-    out.situation = S.sit; out.situation_cls = sc.cls;
-    out.q7 = { letter: a.q7[S.sit], route: pick(Ax, a.q7[S.sit]), A: Ax };
-    out.q8 = { letter: a.q8[S.sit], route: pick(Ax, a.q8[S.sit]), A: Ax };
+    out.q7 = {}; out.q8 = {};
+    for (const sc of C.scenarios) {
+      const sid = sc.sid, Ax = A[sid], pos = S.order7.indexOf(sid) + 1;
+      out.q7[sid] = { letter: a.q7[sid], route: pick(Ax, a.q7[sid]), A: Ax, cls: sc.cls, pos };
+      out.q8[sid] = { letter: a.q8[sid], route: pick(Ax, a.q8[sid]), A: Ax, cls: sc.cls, pos };
+    }
     return out;
   }
   async function submit(box) {
