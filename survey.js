@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v9';
+  const VERSION = '1012v10';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -108,8 +108,8 @@
     part4: { en: (k, n) => `Part 4 · Detour or sun? · example ${k} of ${n}`, zh: (k, n) => `第四部分 · 绕路还是晒太阳？· 例子 ${k}/${n}` },
     q9Title: { en: 'Compared with walking in the sun and making a detour, which do you prefer?', zh: '你觉得相比于暴晒距离和绕路，你更喜欢哪个？' },
     q9Scene: {
-      en: (d) => `<b>Imagine a scorching midday, around 1 pm.</b> The sun is fierce and it is hard to keep walking in it. You need to walk to a place about <b>${d} m</b> away (this is a hypothetical trip). A navigation app offers 7 routes: towards the left you walk farther (more detour) but more of the way is shaded; towards the right the route is shorter but more of it is in the sun.`,
-      zh: (d) => `<b>设想一个酷热的中午（约下午 1 点）。</b>太阳很毒，在太阳下很难走下去。你要步行去约 <b>${d} 米</b>外的地方（假设的行程）。导航软件给出 7 条路线：越往左，绕路越多，但更多路段有遮荫；越往右，路越短，但暴晒距离越长。` },
+      en: (d) => `<b>Imagine a scorching midday, around 1 pm.</b> The sun is fierce and it is hard to keep walking in it. You need to walk to a place about <b>${d} m</b> away by the shortest route. A navigation app offers 7 routes: towards the left you walk farther (more detour) but more of the way is shaded; towards the right the route is shorter but more of it is in the sun.`,
+      zh: (d) => `<b>设想一个酷热的中午（约下午 1 点）。</b>太阳很毒，在太阳下很难走下去。你要步行去一个最短约 <b>${d} 米</b>外的地方。导航软件给出 7 条路线：越往左，绕路越多，但更多路段有遮荫；越往右，路越短，但暴晒距离越长。` },
     schShade: { en: 'shaded', zh: '有遮荫' }, schSun: { en: 'in the sun', zh: '暴晒' },
     q9How: { en: 'Tap or slide along the scale to compare the options, then leave it on the one you would choose.', zh: '点击或拖动刻度比较各个方案，最后停在你会选择的那一档。' },
     q9Left: { en: (m) => `← More detour (up to +${m} m)`, zh: (m) => `← 多绕路（最多 +${m} 米）` },
