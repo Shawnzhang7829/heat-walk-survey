@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v26';
+  const VERSION = '1012v29';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -85,6 +85,7 @@
     unitMin: { en: ' min', zh: ' 分钟' }, unitM: { en: ' m', zh: ' 米' }, unitPP: { en: ' pp', zh: ' 个百分点' },
     shaded: { en: 'shaded', zh: '有遮荫' },
     sunny: { en: 'in the sun', zh: '暴晒' },
+    shadedStretch: { en: 'Shaded stretch (2 pm)', zh: '遮荫路段（下午 2 点）' },
     q6Note: { en: 'Shade coverage = share of the route that is in shade at 2 pm.', zh: '遮荫率 = 下午 2 点时路线上处于阴影中的长度占比。' },
 
     part3: { en: (k, n) => `Part 3 · Situation ${k} of ${n} · step 1 of 2: the start`, zh: (k, n) => `第三部分 · 情境 ${k}/${n} · 第 1 步：起点` },
@@ -96,6 +97,8 @@
       en: { bus: 'You have just got off the bus.', mrt: 'You have just come out of an MRT station exit.', hdb: 'You are setting off on foot from an HDB block.', other: 'You are setting off on foot.' },
       zh: { bus: '你刚下巴士，', mrt: '你刚走出地铁站出口，', hdb: '你正从一栋组屋步行出发，', other: '你正步行出发，' } },
     q7Cap: { en: 'View at the start of the route', zh: '路线起点处的景象' },
+    p3Kicker: { en: 'Part 3 · Four real situations', zh: '第三部分 · 四个真实情境' },
+    p3Title: { en: 'Before you look at the photos', zh: '看照片之前' },
     pedView: {
       en: '<b>Look at the photos as a pedestrian.</b> They were taken from the road; imagine yourself walking on the footpath beside it. <b>Do not judge by the shadows in the photos</b>, which depend on when each photo was taken. Instead, look at whether trees or shade facilities along the footpath would shade you as you walk. White outlines mark nearby trees and shade facilities (e.g. covered linkways, bus shelters, arcades).',
       zh: '<b>请以行人的视角看照片。</b>照片是从马路上拍摄的，请想象自己正走在路边的人行道上。<b>不要根据照片里的影子判断</b>（影子取决于拍摄时间），而要看走在人行道上时，有没有树木或遮荫设施能为你遮阳。白色轮廓线标出了近处的树木和遮荫设施（如有顶连廊、候车亭、骑楼）。' },
@@ -146,6 +149,7 @@
   };
 
   const Q1V = ['every', 'half', 'lesshalf', 'never'], Q2V = ['seek', 'notice', 'rarely'], Q3V = ['yes', 'no'], Q4V = ['yes', 'no'];
+  const SHADE_BLOCK = '#2F7DC1';                          // 第 7 题地图遮荫色块(半透明)
   const GENDER = ['male', 'female', 'na'], AGE = ['21-24', '25-34', '35-44', '45-54', '55-64', '65+'];
   const RESIDENT = ['yes', 'no'];                          // 筛选题:选"否"只做标记,不结束问卷
 
@@ -223,6 +227,7 @@
       { id: 'q5', render: rQ5, ok: () => !!S.answers.q5 },
       { id: 'q6', render: rQ6, ok: () => !!S.answers.q6 },
       // 同一情境配对:先只看起点(Q7),答案锁定后才显示全程(Q8)
+      { id: 'p3intro', render: rP3Intro, ok: () => true },   // 第三部分说明页(不计题号):以行人视角看照片
       ...S.order7.flatMap((sid, k) => [
         { id: 'q7_' + sid, sid, k: k + 1, n: S.order7.length, render: rQ7, ok: () => !!S.answers.q7[sid] },
         { id: 'q8_' + sid, sid, k: k + 1, n: S.order7.length, render: rQ8, ok: () => !!S.answers.q8[sid] }]),
@@ -344,7 +349,7 @@
     for (const ln of lines) {
       const pts = ln.path.map((p) => p.join(',')).join(' ');
       if (ln.halo) svg.append(svgEl('polyline', { points: pts, fill: 'none', stroke: '#fff', 'stroke-width': ln.w + 6, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
-      svg.append(svgEl('polyline', { points: pts, fill: 'none', stroke: ln.color, 'stroke-width': ln.w, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': ln.dash || '', opacity: ln.op ?? 1 }));
+      svg.append(svgEl('polyline', { points: pts, fill: 'none', stroke: ln.color, 'stroke-width': ln.w, 'stroke-linejoin': 'round', 'stroke-linecap': ln.cap || 'round', 'stroke-dasharray': ln.dash || '', opacity: ln.op ?? 1 }));
       if (ln.label) {
         const mid = ln.path[Math.floor(ln.path.length * (ln.labelAt || 0.5))];
         const g = svgEl('g', { transform: `translate(${mid[0]},${mid[1]})` });
@@ -437,11 +442,16 @@
   }
   function rQ6() {
     const q = C.q56, A = S.assignA.q56;
-    const lines = ['B', 'A'].map((L) => ({ path: q.routes[sideOf(A, L)].path, color: L === 'A' ? '#7C3AED' : '#1F2937', w: 9, halo: true, label: L, labelAt: L === 'A' ? 0.45 : 0.6 }));
+    // 遮荫路段(逐边 14:00 遮荫率 ≥ 0.5):半透明蓝色块垫在路线下面
+    // 绘制顺序:路线白描边 → 遮荫色块 → 路线(否则白描边会盖住色块)
+    const halo = ['B', 'A'].map((L) => ({ path: q.routes[sideOf(A, L)].path, color: '#fff', w: 15, op: 0.9 }));
+    const shade = ['B', 'A'].flatMap((L) => (q.routes[sideOf(A, L)].shade || []).map((seg) => ({ path: seg, color: SHADE_BLOCK, w: 30, op: 0.42, cap: 'butt' })));
+    const lines = [...halo, ...shade, ...['B', 'A'].map((L) => ({ path: q.routes[sideOf(A, L)].path, color: L === 'A' ? '#7C3AED' : '#1F2937', w: 9, label: L, labelAt: L === 'A' ? 0.45 : 0.6 }))];
     const p0 = q.routes.short.path;
     put(...head(tr('part2'), tr('q6Title')), el('div', { class: 'scene', html: tr('q6Scene') }),
       mapView(q.map, lines, [p0[0], p0[p0.length - 1]]),
-      el('div', { class: 'legend' }, ...['A', 'B'].map((L) => el('span', {}, el('i', { style: `background:${L === 'A' ? '#7C3AED' : '#1F2937'}` }), tr('route', L)))),
+      el('div', { class: 'legend' }, ...['A', 'B'].map((L) => el('span', {}, el('i', { style: `background:${L === 'A' ? '#7C3AED' : '#1F2937'}` }), tr('route', L))),
+        el('span', {}, el('i', { class: 'block', style: `background:${SHADE_BLOCK}` }), tr('shadedStretch'))),
       routePair('q6', S.answers, A, (L, side) => metricBody(q.routes[side].m, L === 'B' ? q.routes[sideOf(A, 'A')].m : null)),
       el('p', { class: 'note' }, tr('q6Note')));
   }
@@ -458,10 +468,11 @@
       el('div', { class: 'legend' }, ...['A', 'B'].map((L) => { const m = s.routes[sideOf(A, L)].m; return el('span', {}, el('i', { style: `background:${RC[L]}` }), `${tr('route', L)} · ${tr('lenTime', fmt(m.len), Math.round(m.min))}`); }))];
   }
   const lenSub = (s) => (L, side) => tr('lenTime', fmt(s.routes[side].m.len), Math.round(s.routes[side].m.min));
+  function rP3Intro() { put(...head(tr('p3Kicker'), tr('p3Title')), el('p', { class: 'pedview big', html: tr('pedView') })); }
   function rQ7(sc) {
     const s = scen(sc.sid), A = S.assignA[sc.sid];
     const gal = ['A', 'B'].map((L) => ({ src: s.routes[sideOf(A, L)].start, cap: `${tr('route', L)} — ${tr('q7Cap')}` }));
-    put(...head(tr('part3', sc.k, sc.n), tr('q7Title')), el('div', { class: 'scene', html: tr('q7Scene', originText(s)) }), ...scenMap(s, A, false), el('p', { class: 'pedview', html: tr('pedView') }),
+    put(...head(tr('part3', sc.k, sc.n), tr('q7Title')), el('div', { class: 'scene', html: tr('q7Scene', originText(s)) }), ...scenMap(s, A, false),
       routePair(sc.sid, S.answers.q7, A, (L, side) => shot(s.routes[side].start, tr('q7Cap'), gal, L === 'A' ? 0 : 1), { sub: lenSub(s) }));
   }
   function rQ8(sc) {
@@ -493,7 +504,7 @@
           return fig;
         }))];
     }, { locked: () => !allSeen(), sub: lenSub(s) });
-    put(...head(tr('part3b', sc.k, sc.n), tr('q8Title')), el('div', { class: 'scene', html: tr('q8Scene', S.answers.q7[sc.sid]) }), ...scenMap(s, A, true), el('p', { class: 'pedview', html: tr('pedView') }), hint, pair);
+    put(...head(tr('part3b', sc.k, sc.n), tr('q8Title')), el('div', { class: 'scene', html: tr('q8Scene', S.answers.q7[sc.sid]) }), ...scenMap(s, A, true), hint, pair);
   }
 
   // ---------- Q9 ----------
