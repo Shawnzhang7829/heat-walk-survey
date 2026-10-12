@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v19';
+  const VERSION = '1012v20';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -44,7 +44,7 @@
     gender: { en: 'Gender', zh: '性别' },
     genderOpts: { en: ['Male', 'Female', 'Prefer not to say'], zh: ['男', '女', '不愿透露'] },
     age: { en: 'Age', zh: '年龄' },
-    ageOpts: { en: ['Under 18', '18–24', '25–34', '35–44', '45–54', '55–64', '65+'], zh: ['18 岁以下', '18–24', '25–34', '35–44', '45–54', '55–64', '65 岁及以上'] },
+    ageOpts: { en: ['18–24', '25–34', '35–44', '45–54', '55–64', '65+'], zh: ['18–24', '25–34', '35–44', '45–54', '55–64', '65 岁及以上'] },
     resident: { en: 'Do you currently live in Singapore?', zh: '你目前是否居住在新加坡？' },
     residentOpts: { en: ['Yes', 'No'], zh: ['是', '否'] },
     residentShort: { en: 'Lives in Singapore: ', zh: '居住在新加坡：' },
@@ -145,7 +145,7 @@
   };
 
   const Q1V = ['every', 'half', 'lesshalf', 'never'], Q2V = ['seek', 'notice', 'rarely'], Q3V = ['yes', 'no'], Q4V = ['yes', 'no'];
-  const GENDER = ['male', 'female', 'na'], AGE = ['u18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+  const GENDER = ['male', 'female', 'na'], AGE = ['18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
   const RESIDENT = ['yes', 'no'];                          // 筛选题:选"否"只做标记,不结束问卷
   const ATTN = ['never', 'sometimes', 'often', 'always'], ATTN_OK = 'sometimes';   // 注意力检查题:正确答案"偶尔"
 
