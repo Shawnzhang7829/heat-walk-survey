@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v20';
+  const VERSION = '1012v21';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -36,7 +36,7 @@
     introList: {
       en: ['About 8–10 minutes, 10 questions', 'Anonymous: we do not collect your name, contact details or location', 'Every question needs an answer; you can go back to change earlier answers'],
       zh: ['约 8–10 分钟，共 10 题', '匿名作答：不收集姓名、联系方式或位置', '每题必答；可以返回上一题修改答案'] },
-    consent: { en: 'By tapping Start, you agree that your anonymous answers may be used for academic research.', zh: '点击「开始」即表示你同意我们将你的匿名答案用于学术研究。' },
+    consent: { en: 'You must be 18 years or older to take part. By tapping Start, you confirm that you are 18 or older and agree that your anonymous answers may be used for academic research.', zh: '参与者须年满 18 岁。点击「开始」即表示你确认已年满 18 岁，并同意我们将你的匿名答案用于学术研究。' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
     part1: { en: 'Part 1 · About you and shade facilities', zh: '第一部分 · 个人信息与遮荫设施' },
