@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v31';
+  const VERSION = '1012v32';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -110,6 +110,7 @@
       zh: (x) => `<b>与上一题是同一情境。</b>只看起点时你选择了<b>路线 ${x}</b>（该答案已保存）。现在你可以看到每条路线从起点到目的地的全程：照片按步行顺序排列，约每 120 米一张，编号与地图上的点对应。<br><b>请先把两条路线的照片全部看完，再结合路线长度做选择。</b>` },
     viewed: { en: (a, n) => `Viewed ${a} / ${n}`, zh: (a, n) => `已看 ${a} / ${n} 张` },
     viewAll: { en: 'Swipe through all photos of both routes to unlock the choice.', zh: '左右滑动看完两条路线的全部照片后才能选择。' },
+    mapTag: { en: (m, t) => `${m} m · ≈${t} min`, zh: (m, t) => `${m} 米 · 约 ${t} 分钟` },
     lenTime: { en: (m, t) => `${m} m · ≈ ${t} min walk`, zh: (m, t) => `${m} 米 · 步行约 ${t} 分钟` },
     photoN: { en: (i, n) => (i === 1 ? `1 / ${n} · start` : `${i} / ${n}`), zh: (i, n) => (i === 1 ? `1 / ${n} · 起点` : `${i} / ${n}`) },
     nPhotos: { en: (n) => `${n} photos`, zh: (n) => `${n} 张照片` },
@@ -346,25 +347,18 @@
   function mapView(map, lines, od) {
     const box = el('div', { class: 'map' }, el('img', { src: map.img, alt: '', width: map.w, height: map.h }));
     const svg = svgEl('svg', { viewBox: `0 0 ${map.w} ${map.h}`, 'aria-hidden': 'true' });
-    for (const ln of lines) {
+    for (const ln of lines) {                                      // 1) 路线(白描边 + 线)
       const pts = ln.path.map((p) => p.join(',')).join(' ');
       if (ln.halo) svg.append(svgEl('polyline', { points: pts, fill: 'none', stroke: '#fff', 'stroke-width': ln.w + 6, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', opacity: 0.9 }));
       svg.append(svgEl('polyline', { points: pts, fill: 'none', stroke: ln.color, 'stroke-width': ln.w, 'stroke-linejoin': 'round', 'stroke-linecap': ln.cap || 'round', 'stroke-dasharray': ln.dash || '', opacity: ln.op ?? 1 }));
-      if (ln.label) {
-        const mid = ln.path[Math.floor(ln.path.length * (ln.labelAt || 0.5))];
-        const g = svgEl('g', { transform: `translate(${mid[0]},${mid[1]})` });
-        g.append(svgEl('circle', { r: 24, fill: ln.color, stroke: '#fff', 'stroke-width': 5 }));
-        const tx = svgEl('text', { 'text-anchor': 'middle', dy: 10, fill: '#fff', 'font-size': 30, 'font-weight': 700, 'font-family': 'Arial, sans-serif' }); tx.textContent = ln.label;
-        g.append(tx); svg.append(g);
-      }
     }
-    for (const mk of (lines.marks || [])) {                      // 照片位置编号点
+    for (const mk of (lines.marks || [])) {                      // 2) 照片位置编号点
       const g = svgEl('g', { transform: `translate(${mk.p[0]},${mk.p[1]})` });
       g.append(svgEl('circle', { r: 17, fill: mk.color, stroke: '#fff', 'stroke-width': 4 }));
       const tx = svgEl('text', { 'text-anchor': 'middle', dy: 8, fill: '#fff', 'font-size': 22, 'font-weight': 700, 'font-family': 'Arial, sans-serif' }); tx.textContent = mk.n;
       g.append(tx); svg.append(g);
     }
-    if (od) {
+    if (od) {                                                      // 3) 起点 / 目的地
       const [o, d] = od;
       svg.append(svgEl('circle', { cx: o[0], cy: o[1], r: 16, fill: '#fff', stroke: '#111', 'stroke-width': 7 }));
       const sq = svgEl('rect', { x: d[0] - 16, y: d[1] - 16, width: 32, height: 32, rx: 5, fill: '#111', stroke: '#fff', 'stroke-width': 4 }); svg.append(sq);
@@ -373,6 +367,40 @@
         const t = svgEl('text', { x: p[0], y: p[1] + (above ? -30 : 58), 'text-anchor': 'middle', 'font-size': 34, 'font-weight': 700, 'font-family': 'Arial, sans-serif', fill: '#111', stroke: '#fff', 'stroke-width': 9, 'paint-order': 'stroke' });
         t.textContent = txt; svg.append(t);
       }
+    }
+    // 4) 路线字母 + 长度/时间胶囊,最后画(压在编号点上面);位置在路线上自动挑:避开编号点、起终点和已放的标签,尽量靠近默认位置
+    const obst = [...(lines.marks || []).map((m) => m.p), ...(od || [])], placed = [];
+    const ptRect = (p, r) => Math.hypot(Math.max(r[0] - p[0], 0, p[0] - r[2]), Math.max(r[1] - p[1], 0, p[1] - r[3]));
+    const rectRect = (a, b) => Math.hypot(Math.max(a[0] - b[2], b[0] - a[2], 0), Math.max(a[1] - b[3], b[1] - a[3], 0));
+    for (const ln of lines) {
+      if (!ln.label) continue;
+      const fs = 34, th = 54, tw = ln.tag ? [...ln.tag].reduce((a, ch) => a + (ch.charCodeAt(0) > 0x2e80 ? fs : 0.56 * fs), 0) + 30 : 0;
+      const f0 = ln.labelAt || 0.5, fr = [f0];
+      for (let f = 0.2; f <= 0.81; f += 0.05) fr.push(Math.round(f * 100) / 100);
+      let best = null;
+      for (const f of fr) {
+        const mid = ln.path[Math.min(ln.path.length - 1, Math.floor(ln.path.length * f))];
+        for (const right of (tw ? [true, false] : [true])) {
+          const r = right ? [mid[0] - 26, mid[1] - th / 2 - 2, mid[0] + 30 + tw, mid[1] + th / 2 + 2] : [mid[0] - 30 - tw, mid[1] - th / 2 - 2, mid[0] + 26, mid[1] + th / 2 + 2];
+          if (r[0] < 4 || r[2] > map.w - 4 || r[1] < 4 || r[3] > map.h - 4) continue;
+          const clear = Math.min(120, ...obst.map((p) => ptRect(p, r)), ...placed.map((q) => rectRect(q, r)));
+          const score = clear - 60 * Math.abs(f - f0) - (right ? 0 : 3);
+          if (!best || score > best.score) best = { score, mid, right, r };
+        }
+      }
+      if (!best) { const mid = ln.path[Math.floor(ln.path.length * f0)]; best = { mid, right: mid[0] + 30 + tw <= map.w - 8, r: [0, 0, 0, 0] }; }
+      placed.push(best.r);
+      const { mid, right } = best;
+      const g = svgEl('g', { transform: `translate(${mid[0]},${mid[1]})` });
+      if (tw) {
+        const x = right ? 30 : -30 - tw;
+        g.append(svgEl('rect', { x, y: -th / 2, width: tw, height: th, rx: th / 2, fill: ln.color, stroke: '#fff', 'stroke-width': 4 }));
+        const tt = svgEl('text', { x: x + tw / 2, 'text-anchor': 'middle', dy: 12, fill: '#fff', 'font-size': fs, 'font-weight': 700, 'font-family': 'Arial, "PingFang SC", "Microsoft YaHei", sans-serif' }); tt.textContent = ln.tag;
+        g.append(tt);
+      }
+      g.append(svgEl('circle', { r: 24, fill: ln.color, stroke: '#fff', 'stroke-width': 5 }));
+      const tx = svgEl('text', { 'text-anchor': 'middle', dy: 10, fill: '#fff', 'font-size': 30, 'font-weight': 700, 'font-family': 'Arial, sans-serif' }); tx.textContent = ln.label;
+      g.append(tx); svg.append(g);
     }
     box.append(svg);
     return box;
@@ -461,7 +489,7 @@
   function originText(s) { const m = I18N.origin[S.lang]; return m[(s.od && s.od.from_) || 'other'] || m.other; }
   const RC = { A: '#7C3AED', B: '#1F2937' };
   function scenMap(s, A, withMarks) {
-    const lines = ['B', 'A'].map((L) => ({ path: s.routes[sideOf(A, L)].path, color: RC[L], w: 9, halo: true, label: withMarks ? null : L, labelAt: L === 'A' ? 0.45 : 0.6 }));
+    const lines = ['B', 'A'].map((L) => { const m = s.routes[sideOf(A, L)].m; return { path: s.routes[sideOf(A, L)].path, color: RC[L], w: 9, halo: true, label: L, tag: tr('mapTag', fmt(m.len), Math.round(m.min)), labelAt: L === 'A' ? 0.45 : 0.6 }; });
     if (withMarks) lines.marks = ['B', 'A'].flatMap((L) => s.routes[sideOf(A, L)].marks.map((p, i) => ({ p, n: i + 1, color: RC[L] })));
     const p0 = s.routes.short.path;
     return [mapView(s.map, lines, [p0[0], p0[p0.length - 1]]),

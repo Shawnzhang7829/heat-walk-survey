@@ -171,7 +171,7 @@ ul.plain li { margin: 4px 0; }
 .err { color: var(--warn); }
 .linkbtn { background: none; border: 0; color: var(--accent); text-decoration: underline; cursor: pointer; padding: 0; font-size: 14px; }
 
-.route .rsub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.route .rsub { font-size: 16px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .route .pick:disabled { border-color: #C9C4BA; color: #9A948A; background: #F4F2EE; cursor: not-allowed; }
 .strip-hint .seen { font-weight: 600; color: var(--accent); }
 .note.viewall { color: var(--warn); font-weight: 600; margin: 0 0 10px; }
