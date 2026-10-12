@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v34';
+  const VERSION = '1012v35';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -100,8 +100,8 @@
     p3Kicker: { en: 'Part 3 · Four real situations', zh: '第三部分 · 四个真实情境' },
     p3Title: { en: 'Before you look at the photos', zh: '看照片之前' },
     pedView: {
-      en: '<b>Look at the photos as a pedestrian.</b> They were taken from the road; imagine yourself walking on the footpath beside it. <b>Do not judge by the shadows in the photos</b>, which depend on when each photo was taken. Instead, look at whether trees or shade facilities along the footpath would shade you as you walk. White outlines mark nearby trees and shade facilities (e.g. covered linkways, bus shelters, arcades). The shade facilities are outlined in the photos, but not all of them necessarily serve the footpath. <b>Based on the walking distance and how much of each route is shaded, choose the route you personally prefer.</b>',
-      zh: '<b>请以行人的视角看照片。</b>照片是从马路上拍摄的，请想象自己正走在路边的人行道上。<b>不要根据照片里的影子判断</b>（影子取决于拍摄时间），而要看走在人行道上时，有没有树木或遮荫设施能为你遮阳。白色轮廓线标出了近处的树木和遮荫设施（如有顶连廊、候车亭、骑楼）。图中遮荫设施已经标出，但是它们未必都能为人行道服务。<b>根据所需要的步行长度和路段遮荫情况，主观选择你所偏好的路径。</b>' },
+      en: '<b>Look at the photos as a pedestrian.</b> They were taken from the road; imagine yourself walking on the footpath beside it. <b>Do not judge by the shadows in the photos</b>, which depend on when each photo was taken. Instead, look at whether trees or shade facilities along the footpath would shade you as you walk. White outlines mark nearby trees and shade facilities (e.g. covered linkways, bus shelters, arcades). To make them easier to see, shade facilities are outlined in the photos, but not all of them necessarily serve the footpath. <b>Based on the walking distance and how much of each route is shaded, choose the route you personally prefer.</b>',
+      zh: '<b>请以行人的视角看照片。</b>照片是从马路上拍摄的，请想象自己正走在路边的人行道上。<b>不要根据照片里的影子判断</b>（影子取决于拍摄时间），而要看走在人行道上时，有没有树木或遮荫设施能为你遮阳。白色轮廓线标出了近处的树木和遮荫设施（如有顶连廊、候车亭、骑楼）。为了便于观察，图中遮荫设施已经标出，但是它们未必都能为人行道服务。<b>根据所需要的步行长度和路段遮荫情况，主观选择你所偏好的路径。</b>' },
 
     part3b: { en: (k, n) => `Part 3 · Situation ${k} of ${n} · step 2 of 2: whole route`, zh: (k, n) => `第三部分 · 情境 ${k}/${n} · 第 2 步：全程` },
     q8Title: { en: 'Now that you can see the whole route, which way do you go?', zh: '现在你能看到整条路线，你会走哪条路？' },
