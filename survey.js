@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v18';
+  const VERSION = '1012v19';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -45,6 +45,9 @@
     genderOpts: { en: ['Male', 'Female', 'Prefer not to say'], zh: ['男', '女', '不愿透露'] },
     age: { en: 'Age', zh: '年龄' },
     ageOpts: { en: ['Under 18', '18–24', '25–34', '35–44', '45–54', '55–64', '65+'], zh: ['18 岁以下', '18–24', '25–34', '35–44', '45–54', '55–64', '65 岁及以上'] },
+    resident: { en: 'Do you currently live in Singapore?', zh: '你目前是否居住在新加坡？' },
+    residentOpts: { en: ['Yes', 'No'], zh: ['是', '否'] },
+    residentShort: { en: 'Lives in Singapore: ', zh: '居住在新加坡：' },
 
     q1Title: { en: 'On your usual commute, how often do you come across or use shade facilities like these?', zh: '你平时通勤出行时，大约多频繁会经过或使用这类遮荫设施？' },
     q1Lead: { en: 'Shade facilities: the four types shown below. Tap a photo to enlarge.', zh: '遮荫设施（shade facility）指下面四类。点击照片可放大。' },
@@ -58,6 +61,8 @@
 
     q4Title: { en: 'Do you ever deliberately take a longer way to avoid the sun?', zh: '你平时会为了避晒而主动绕路吗？' },
     q4Opts: { en: ['Yes', 'No'], zh: ['会', '不会'] },
+    attnTitle: { en: 'Attention check: to show that you are reading carefully, please choose “Sometimes” for this item.', zh: '注意力检查：为确认你在认真阅读，本题请选择「偶尔」。' },
+    attnOpts: { en: ['Never', 'Sometimes', 'Often', 'Always'], zh: ['从不', '偶尔', '经常', '总是'] },
 
     part2: { en: 'Part 2 · Choosing a route', zh: '第二部分 · 选择路线' },
     q5Title: { en: 'Based on these descriptions, which route would you take?', zh: '根据以下描述，你会选择哪条路线？' },
@@ -141,6 +146,8 @@
 
   const Q1V = ['every', 'half', 'lesshalf', 'never'], Q2V = ['seek', 'notice', 'rarely'], Q3V = ['yes', 'no'], Q4V = ['yes', 'no'];
   const GENDER = ['male', 'female', 'na'], AGE = ['u18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+  const RESIDENT = ['yes', 'no'];                          // 筛选题:选"否"只做标记,不结束问卷
+  const ATTN = ['never', 'sometimes', 'often', 'always'], ATTN_OK = 'sometimes';   // 注意力检查题:正确答案"偶尔"
 
   let C = null;      // content.json
   let S = null;      // respondent state
@@ -208,11 +215,11 @@
   function buildScreens() {
     screens = [
       { id: 'intro', render: rIntro, ok: () => true, label: 'start' },
-      { id: 'q0', render: rQ0, ok: () => S.answers.q0.gender && S.answers.q0.age },
+      { id: 'q0', render: rQ0, ok: () => S.answers.q0.resident && S.answers.q0.gender && S.answers.q0.age },
       { id: 'q1', render: rQ1, ok: () => !!S.answers.q1 },
       { id: 'q2', render: rQ2, ok: () => !!S.answers.q2 },
       { id: 'q3', render: rQ3, ok: () => !!S.answers.q3 },
-      { id: 'q4', render: rQ4, ok: () => !!S.answers.q4 },
+      { id: 'q4', render: rQ4, ok: () => !!S.answers.q4 && !!S.answers.attn },
       { id: 'q5', render: rQ5, ok: () => !!S.answers.q5 },
       { id: 'q6', render: rQ6, ok: () => !!S.answers.q6 },
       // 同一情境配对:先只看起点(Q7),答案锁定后才显示全程(Q8)
@@ -380,6 +387,7 @@
   function rQ0() {
     const a = S.answers.q0;
     put(...head(tr('part1'), tr('q0Title')),
+      el('div', { class: 'field' }, el('span', { class: 'label' }, tr('resident')), radios(tr('residentOpts'), RESIDENT, a.resident, (v) => { a.resident = v; }, true)),
       el('div', { class: 'field' }, el('span', { class: 'label' }, tr('gender')), radios(tr('genderOpts'), GENDER, a.gender, (v) => { a.gender = v; }, true)),
       el('div', { class: 'field' }, el('span', { class: 'label' }, tr('age')), radios(tr('ageOpts'), AGE, a.age, (v) => { a.age = v; }, true)));
   }
@@ -399,7 +407,10 @@
   function rQ1() { put(...head(tr('part1'), tr('q1Title'), tr('q1Lead')), facGrid(), radios(tr('q1Opts'), Q1V, S.answers.q1, (v) => { S.answers.q1 = v; })); }
   function rQ2() { put(...head(tr('part1'), tr('q2Title')), facGrid(true), radios(tr('q2Opts'), Q2V, S.answers.q2, (v) => { S.answers.q2 = v; })); }
   function rQ3() { put(...head(tr('part1'), tr('q3Title')), facGrid(), radios(tr('q3Opts'), Q3V, S.answers.q3, (v) => { S.answers.q3 = v; })); }
-  function rQ4() { put(...head(tr('part1'), tr('q4Title')), radios(tr('q4Opts'), Q4V, S.answers.q4, (v) => { S.answers.q4 = v; }, true)); }
+  function rQ4() {
+    put(...head(tr('part1'), tr('q4Title')), radios(tr('q4Opts'), Q4V, S.answers.q4, (v) => { S.answers.q4 = v; }, true),
+      el('div', { class: 'field attn' }, el('span', { class: 'label' }, tr('attnTitle')), radios(tr('attnOpts'), ATTN, S.answers.attn, (v) => { S.answers.attn = v; }, true)));
+  }
 
   // ---------- Q5 / Q6 ----------
   function rQ5() {
@@ -589,6 +600,7 @@
       v: VERSION, rid: S.rid, lang: S.lang, langSwitches: S.langSwitches, started: S.started, finished: new Date().toISOString(),
       ua: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio || 1], tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
       q0: a.q0, q1: a.q1, q2: a.q2, q3: a.q3, q4: a.q4,
+      attn: a.attn, attn_pass: a.attn === ATTN_OK ? 1 : 0,
       q5: { letter: a.q5, route: pick(A.q56, a.q5), A: A.q56 },
       q6: { letter: a.q6, route: pick(A.q56, a.q6), A: A.q56 },
       q9: Object.fromEntries(C.q9s.map((e) => [e.eid, { level: a.q9[e.eid], lam: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam : null,
@@ -645,7 +657,8 @@
     const item = (q, title, ans) => out.push(el('div', { class: 'ritem' }, el('div', { class: 'rq' }, el('b', {}, q + ' '), title), el('div', { class: 'ra' }, ans || '—')));
     const opt = (key, vals, v) => { const i = vals.indexOf(v); return i >= 0 ? tr(key)[i] : null; };
     const q0 = a.q0 || {};
-    item('1.', tr('q0Title'), [opt('genderOpts', GENDER, q0.gender), opt('ageOpts', AGE, q0.age)].filter(Boolean).join(' · '));
+    const res = opt('residentOpts', RESIDENT, q0.resident);
+    item('1.', tr('q0Title'), [res ? `${tr('residentShort')}${res}` : null, opt('genderOpts', GENDER, q0.gender), opt('ageOpts', AGE, q0.age)].filter(Boolean).join(' · '));
     item('2.', tr('q1Title'), opt('q1Opts', Q1V, a.q1));
     item('3.', tr('q2Title'), opt('q2Opts', Q2V, a.q2));
     item('4.', tr('q3Title'), opt('q3Opts', Q3V, a.q3));
