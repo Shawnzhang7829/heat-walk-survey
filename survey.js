@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v10';
+  const VERSION = '1012v11';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -123,7 +123,7 @@
     q9DetourRate: { en: 'Detour rate', zh: '绕行率' },
     q9Shortest: { en: 'shortest route', zh: '最短路线' },
     q9vsShort: { en: (d) => `${d} vs. shortest`, zh: (d) => `较最短路线 ${d}` },
-    q9Bars: { en: ['Detour', 'In the sun'], zh: ['绕行', '暴晒'] },
+    q9Bars: { en: ['Detour', 'In the sun', 'Length'], zh: ['绕行', '暴晒', '总长度'] },
 
     sending: { en: 'Submitting your answers…', zh: '正在提交答案……' },
     sendFail: { en: 'Your answers could not be saved yet. They are kept on this device — please check your connection and tap “Try again”.', zh: '答案暂未保存成功（已暂存在本机）。请检查网络后点「重试」。' },
@@ -518,13 +518,13 @@
   function rQ9(sc) {
     const q = C.q9s.find((e) => e.eid === sc.eid), lv = q.levels, N = lv.length, eid = sc.eid;
     const visits = S.q9visits[eid] || (S.q9visits[eid] = []);
-    const shortest = lv[N - 1].m, maxExtra = lv[0].m.extra, maxSun = shortest.sun;
+    const shortest = lv[N - 1].m, maxExtra = lv[0].m.extra, maxSun = shortest.sun, maxLen = Math.max(...lv.map((x) => x.m.len));
     const mapBox = el('div');
     const panel = el('div', { class: 'panel' });
     const barsBox = el('div', { class: 'q9bars' });
-    const drawBars = (k) => {                                      // 滑块正下方的"绕行 / 暴晒"柱状图
+    const drawBars = (k) => {                                      // 滑块正下方的"绕行 / 暴晒 / 总长度"柱状图
       const m = k ? lv[k - 1].m : null;
-      barsBox.replaceChildren(...[[tr('q9Bars')[0], m && m.extra, maxExtra, '#6E8FA8'], [tr('q9Bars')[1], m && m.sun, maxSun, '#E8A33D']].map(([lab, v, mx, col]) =>
+      barsBox.replaceChildren(...[[tr('q9Bars')[0], m && m.extra, maxExtra, '#6E8FA8'], [tr('q9Bars')[1], m && m.sun, maxSun, '#E8A33D'], [tr('q9Bars')[2], m && m.len, maxLen, '#5F6670']].map(([lab, v, mx, col]) =>
         el('div', { class: 'q9bar' },
           el('span', { class: 'lab' }, lab),
           el('span', { class: 'track' }, el('i', { style: `width:${m && mx ? (100 * v) / mx : 0}%;background:${col}` })),
