@@ -1,4 +1,4 @@
-# Walking in the heat — route-choice survey
+# Walking in the shade — route-choice survey
 
 Static web survey (English / 中文) on how pedestrians in Singapore trade off detours against sun exposure.
 Served with GitHub Pages; responses are posted to a Google Apps Script web app that writes them to a Google Sheet.
