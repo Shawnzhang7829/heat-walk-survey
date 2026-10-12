@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v29';
+  const VERSION = '1012v30';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -149,7 +149,7 @@
   };
 
   const Q1V = ['every', 'half', 'lesshalf', 'never'], Q2V = ['seek', 'notice', 'rarely'], Q3V = ['yes', 'no'], Q4V = ['yes', 'no'];
-  const SHADE_BLOCK = '#2F7DC1';                          // 第 7 题地图遮荫色块(半透明)
+  const SHADE_BLOCK = '#16A34A';                          // 第 7 题地图遮荫色块(半透明绿)
   const GENDER = ['male', 'female', 'na'], AGE = ['21-24', '25-34', '35-44', '45-54', '55-64', '65+'];
   const RESIDENT = ['yes', 'no'];                          // 筛选题:选"否"只做标记,不结束问卷
 
@@ -445,7 +445,7 @@
     // 遮荫路段(逐边 14:00 遮荫率 ≥ 0.5):半透明蓝色块垫在路线下面
     // 绘制顺序:路线白描边 → 遮荫色块 → 路线(否则白描边会盖住色块)
     const halo = ['B', 'A'].map((L) => ({ path: q.routes[sideOf(A, L)].path, color: '#fff', w: 15, op: 0.9 }));
-    const shade = ['B', 'A'].flatMap((L) => (q.routes[sideOf(A, L)].shade || []).map((seg) => ({ path: seg, color: SHADE_BLOCK, w: 30, op: 0.42, cap: 'butt' })));
+    const shade = ['B', 'A'].flatMap((L) => (q.routes[sideOf(A, L)].shade || []).map((seg) => ({ path: seg, color: SHADE_BLOCK, w: 32, op: 0.5, cap: 'butt' })));
     const lines = [...halo, ...shade, ...['B', 'A'].map((L) => ({ path: q.routes[sideOf(A, L)].path, color: L === 'A' ? '#7C3AED' : '#1F2937', w: 9, label: L, labelAt: L === 'A' ? 0.45 : 0.6 }))];
     const p0 = q.routes.short.path;
     put(...head(tr('part2'), tr('q6Title')), el('div', { class: 'scene', html: tr('q6Scene') }),

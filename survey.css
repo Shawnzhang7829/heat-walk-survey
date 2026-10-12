@@ -199,4 +199,4 @@ ul.plain li { margin: 4px 0; }
 .review .ra { font-size: 15px; font-weight: 600; margin-top: 2px; }
 .pedview { background: var(--card); border-left: 4px solid var(--accent); border-radius: 8px; padding: 9px 12px; margin: 12px 0 14px; font-size: 14.5px; line-height: 1.5; }
 .pedview.big { font-size: 17px; line-height: 1.65; padding: 16px 16px; margin-top: 18px; }
-.legend i.block { height: 12px; width: 20px; opacity: .42; border-radius: 2px; }
+.legend i.block { height: 12px; width: 20px; opacity: .5; border-radius: 2px; }
