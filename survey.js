@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1013v38';
+  const VERSION = '1013v39';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -210,7 +210,7 @@
       v: VERSION, rid: uuid(), lang, idx: 0, started: new Date().toISOString(), langSwitches: 0,
       assignA: A,                        // which true route is shown as "A"
       order7: shuffle(sids),                                // 情境题(1013v37 起 content.json 无情境,第三部分整体删去;代码保留,情境为空时不出现)
-      q9order: shuffle(C.q9s.map((e) => e.eid)),            // 第 9 题 3 个例子随机顺序
+      q9order: shuffle(C.q9s.map((e) => e.eid)),            // 第 9 题(显示第 8 题)各例子随机顺序;1013v39 起 3 个例子(加 E3:最大绕行约 30%)
       answers: { q0: {}, q7: {}, q8: {}, q9: {} }, q9visits: {}, seen8: {},
       timing: {},
     };
