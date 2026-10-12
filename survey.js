@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1013v37';
+  const VERSION = '1013v38';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -34,8 +34,8 @@
       en: 'We are researchers studying how people in Singapore walk on hot days, and how shade facilities (arcades / five-foot ways, covered linkways, covered overhead bridges and inter-building corridors) and trees affect which way they go.',
       zh: '我们正在研究新加坡居民在炎热天气中的步行方式，以及骑楼（五脚基）、有顶连廊、有顶人行天桥、楼间连廊等遮荫设施和行道树如何影响人们的路线选择。' },
     introList: {
-      en: ['About 8–10 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location', 'Participation is voluntary. You may stop at any time by closing this page; unfinished answers are not submitted.', 'Every question needs an answer; you can go back to change earlier answers'],
-      zh: ['约 8–10 分钟，共 8 题', '匿名作答：不收集姓名、联系方式或位置', '参与完全自愿，你可以随时关闭页面退出，未完成的答案不会提交。', '每题必答；可以返回上一题修改答案'] },
+      en: ['About 5 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location', 'Participation is voluntary. You may stop at any time by closing this page; unfinished answers are not submitted.', 'Every question needs an answer; you can go back to change earlier answers'],
+      zh: ['约 5 分钟，共 8 题', '匿名作答：不收集姓名、联系方式或位置', '参与完全自愿，你可以随时关闭页面退出，未完成的答案不会提交。', '每题必答；可以返回上一题修改答案'] },
     consent: { en: 'You must be 21 years or older to take part. By tapping Start, you confirm that you are 21 or older and agree that your anonymous answers may be used for academic research.', zh: '参与者须年满 21 岁。点击「开始」即表示你确认已年满 21 岁，并同意我们将你的匿名答案用于学术研究。' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
