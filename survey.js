@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v23';
+  const VERSION = '1012v25';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -98,6 +98,9 @@
       en: { bus: 'You have just got off the bus.', mrt: 'You have just come out of an MRT station exit.', hdb: 'You are setting off on foot from an HDB block.', other: 'You are setting off on foot.' },
       zh: { bus: '你刚下巴士，', mrt: '你刚走出地铁站出口，', hdb: '你正从一栋组屋步行出发，', other: '你正步行出发，' } },
     q7Cap: { en: 'View at the start of the route', zh: '路线起点处的景象' },
+    pedView: {
+      en: '<b>Look at the photos as a pedestrian.</b> They were taken from the road; imagine yourself walking on the footpath beside it. <b>Do not judge by the shadows in the photos</b>, which depend on when each photo was taken. Instead, look at whether trees or shade facilities along the footpath would shade you as you walk. White outlines mark nearby trees and shade facilities (e.g. covered linkways, bus shelters, arcades).',
+      zh: '<b>请以行人的视角看照片。</b>照片是从马路上拍摄的，请想象自己正走在路边的人行道上。<b>不要根据照片里的影子判断</b>（影子取决于拍摄时间），而要看走在人行道上时，有没有树木或遮荫设施能为你遮阳。白色轮廓线标出了近处的树木和遮荫设施（如有顶连廊、候车亭、骑楼）。' },
 
     part3b: { en: (k, n) => `Part 3 · Situation ${k} of ${n} · step 2 of 2: whole route`, zh: (k, n) => `第三部分 · 情境 ${k}/${n} · 第 2 步：全程` },
     q8Title: { en: 'Now that you can see the whole route, which way do you go?', zh: '现在你能看到整条路线，你会走哪条路？' },
@@ -463,7 +466,7 @@
   function rQ7(sc) {
     const s = scen(sc.sid), A = S.assignA[sc.sid];
     const gal = ['A', 'B'].map((L) => ({ src: s.routes[sideOf(A, L)].start, cap: `${tr('route', L)} — ${tr('q7Cap')}` }));
-    put(...head(tr('part3', sc.k, sc.n), tr('q7Title')), el('div', { class: 'scene', html: tr('q7Scene', originText(s)) }), ...scenMap(s, A, false),
+    put(...head(tr('part3', sc.k, sc.n), tr('q7Title')), el('div', { class: 'scene', html: tr('q7Scene', originText(s)) }), ...scenMap(s, A, false), el('p', { class: 'pedview', html: tr('pedView') }),
       routePair(sc.sid, S.answers.q7, A, (L, side) => shot(s.routes[side].start, tr('q7Cap'), gal, L === 'A' ? 0 : 1), { sub: lenSub(s) }));
   }
   function rQ8(sc) {
@@ -495,7 +498,7 @@
           return fig;
         }))];
     }, { locked: () => !allSeen(), sub: lenSub(s) });
-    put(...head(tr('part3b', sc.k, sc.n), tr('q8Title')), el('div', { class: 'scene', html: tr('q8Scene', S.answers.q7[sc.sid]) }), ...scenMap(s, A, true), hint, pair);
+    put(...head(tr('part3b', sc.k, sc.n), tr('q8Title')), el('div', { class: 'scene', html: tr('q8Scene', S.answers.q7[sc.sid]) }), ...scenMap(s, A, true), el('p', { class: 'pedview', html: tr('pedView') }), hint, pair);
   }
 
   // ---------- Q9 ----------

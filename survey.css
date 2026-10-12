@@ -199,3 +199,4 @@ ul.plain li { margin: 4px 0; }
 .review .ra { font-size: 15px; font-weight: 600; margin-top: 2px; }
 .field.attn { margin-top: 28px; padding-top: 18px; border-top: 1px dashed var(--line); }
 .field.attn .opts.row { grid-template-columns: repeat(2, 1fr); }
+.pedview { background: var(--card); border-left: 4px solid var(--accent); border-radius: 8px; padding: 9px 12px; margin: 12px 0 14px; font-size: 14.5px; line-height: 1.5; }
