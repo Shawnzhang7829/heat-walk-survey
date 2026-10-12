@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v11';
+  const VERSION = '1012v12';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
