@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1013v36';
+  const VERSION = '1013v37';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -34,8 +34,8 @@
       en: 'We are researchers studying how people in Singapore walk on hot days, and how shade facilities (arcades / five-foot ways, covered linkways, covered overhead bridges and inter-building corridors) and trees affect which way they go.',
       zh: '我们正在研究新加坡居民在炎热天气中的步行方式，以及骑楼（五脚基）、有顶连廊、有顶人行天桥、楼间连廊等遮荫设施和行道树如何影响人们的路线选择。' },
     introList: {
-      en: ['About 8–10 minutes, 10 questions', 'Anonymous: we do not collect your name, contact details or location', 'Participation is voluntary. You may stop at any time by closing this page; unfinished answers are not submitted.', 'Every question needs an answer; you can go back to change earlier answers'],
-      zh: ['约 8–10 分钟，共 10 题', '匿名作答：不收集姓名、联系方式或位置', '参与完全自愿，你可以随时关闭页面退出，未完成的答案不会提交。', '每题必答；可以返回上一题修改答案'] },
+      en: ['About 8–10 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location', 'Participation is voluntary. You may stop at any time by closing this page; unfinished answers are not submitted.', 'Every question needs an answer; you can go back to change earlier answers'],
+      zh: ['约 8–10 分钟，共 8 题', '匿名作答：不收集姓名、联系方式或位置', '参与完全自愿，你可以随时关闭页面退出，未完成的答案不会提交。', '每题必答；可以返回上一题修改答案'] },
     consent: { en: 'You must be 21 years or older to take part. By tapping Start, you confirm that you are 21 or older and agree that your anonymous answers may be used for academic research.', zh: '参与者须年满 21 岁。点击「开始」即表示你确认已年满 21 岁，并同意我们将你的匿名答案用于学术研究。' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
@@ -115,7 +115,7 @@
     photoN: { en: (i, n) => (i === 1 ? `1 / ${n} · start` : `${i} / ${n}`), zh: (i, n) => (i === 1 ? `1 / ${n} · 起点` : `${i} / ${n}`) },
     nPhotos: { en: (n) => `${n} photos`, zh: (n) => `${n} 张照片` },
 
-    part4: { en: (k, n) => `Part 4 · Detour or sun? · example ${k} of ${n}`, zh: (k, n) => `第四部分 · 绕路还是晒太阳？· 例子 ${k}/${n}` },
+    part4: { en: (k, n) => `Part 3 · Detour or sun? · example ${k} of ${n}`, zh: (k, n) => `第三部分 · 绕路还是晒太阳？· 例子 ${k}/${n}` },   // 1013v37 删去原第三部分(情境题)后顺延为第三部分
     q9Title: { en: 'Compared with walking in the sun and making a detour, which do you prefer?', zh: '你觉得相比于暴晒距离和绕路，你更喜欢哪个？' },
     q9Scene: {
       en: (d) => `<b>Imagine a scorching midday, around 1 pm.</b> The sun is fierce and it is hard to keep walking in it. You need to walk to a place about <b>${d} m</b> away by the shortest route. A navigation app offers 7 routes: towards the left you walk farther (more detour) but more of the way is shaded; towards the right the route is shorter but more of it is in the sun.`,
@@ -209,7 +209,7 @@
     return {
       v: VERSION, rid: uuid(), lang, idx: 0, started: new Date().toISOString(), langSwitches: 0,
       assignA: A,                        // which true route is shown as "A"
-      order7: shuffle(sids),                                // 3 个情境全部作答,顺序随机(1013v36 删去 S2)
+      order7: shuffle(sids),                                // 情境题(1013v37 起 content.json 无情境,第三部分整体删去;代码保留,情境为空时不出现)
       q9order: shuffle(C.q9s.map((e) => e.eid)),            // 第 9 题 3 个例子随机顺序
       answers: { q0: {}, q7: {}, q8: {}, q9: {} }, q9visits: {}, seen8: {},
       timing: {},
@@ -228,7 +228,7 @@
       { id: 'q5', render: rQ5, ok: () => !!S.answers.q5 },
       { id: 'q6', render: rQ6, ok: () => !!S.answers.q6 },
       // 同一情境配对:先只看起点(Q7),答案锁定后才显示全程(Q8)
-      { id: 'p3intro', render: rP3Intro, ok: () => true },   // 第三部分说明页(不计题号):以行人视角看照片
+      ...(S.order7.length ? [{ id: 'p3intro', render: rP3Intro, ok: () => true }] : []),   // 情境题说明页(不计题号):以行人视角看照片;无情境时不出现
       ...S.order7.flatMap((sid, k) => [
         { id: 'q7_' + sid, sid, k: k + 1, n: S.order7.length, render: rQ7, ok: () => !!S.answers.q7[sid] },
         { id: 'q8_' + sid, sid, k: k + 1, n: S.order7.length, render: rQ8, ok: () => !!S.answers.q8[sid] }]),
@@ -236,7 +236,8 @@
       { id: 'end', render: rEnd, ok: () => false, final: true },
     ];
   }
-  const qnum = (id) => (/^q\d/.test(id) ? Number(id[1]) + 1 : 0);                 // 题号 1–10(第 9 题的 3 个例子同属第 10 题)
+  // 显示题号:q0–q6 = 1–7;有情境时 q7/q8/q9 = 8/9/10,无情境(1013v37 起)时 q9 = 8;q9 的各例子同属一题
+  const qnum = (id) => { const m = /^q(\d)/.exec(id); if (!m) return 0; const k = Number(m[1]); return k <= 6 || C.scenarios.length ? k + 1 : k - 1; };
   const nQuestions = () => Math.max(...screens.map((s) => qnum(s.id)));
 
   function render() {
@@ -704,7 +705,7 @@
     const order = snap.order7 || C.scenarios.map((x) => x.sid), n = order.length;
     order.forEach((sid, k) => {
       const sc = scen(sid); if (!sc) return;
-      for (const [qn, key, ttl, part] of [['8.', 'q7', 'q7Title', 'part3'], ['9.', 'q8', 'q8Title', 'part3b']]) {
+      for (const [qn, key, ttl, part] of [[`${qnum('q7')}.`, 'q7', 'q7Title', 'part3'], [`${qnum('q8')}.`, 'q8', 'q8Title', 'part3b']]) {
         const L = (a[key] || {})[sid]; if (!L) continue;
         const m = sc.routes[sideOf(A[sid], L)].m;
         item(qn, `${tr(part, k + 1, n)} — ${tr(ttl)}`, `${tr('route', L)} — ${tr('lenTime', fmt(m.len), Math.round(m.min))}`);
@@ -714,7 +715,7 @@
     q9o.forEach((eid, k) => {
       const e = C.q9s.find((x) => x.eid === eid), lvl = (a.q9 || {})[eid]; if (!e || !lvl) return;
       const m = e.levels[lvl - 1].m;
-      item('10.', `${tr('part4', k + 1, q9o.length)} — ${tr('q9Title')}`, `${tr('q9Option', lvl)} — ${tr('q9Detour')} +${fmt(m.extra)} m (${tr('q9DetourRate')} +${m.extra_pct}%) · ${tr('q9Shade')} ${m.sigma}%`);
+      item(`${qnum('q9')}.`, `${tr('part4', k + 1, q9o.length)} — ${tr('q9Title')}`, `${tr('q9Option', lvl)} — ${tr('q9Detour')} +${fmt(m.extra)} m (${tr('q9DetourRate')} +${m.extra_pct}%) · ${tr('q9Shade')} ${m.sigma}%`);
     });
     return out;
   }
