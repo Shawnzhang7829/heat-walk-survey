@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v17';
+  const VERSION = '1012v18';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -61,7 +61,7 @@
 
     part2: { en: 'Part 2 · Choosing a route', zh: '第二部分 · 选择路线' },
     q5Title: { en: 'Based on these descriptions, which route would you take?', zh: '根据以下描述，你会选择哪条路线？' },
-    q5Scene: { en: '<b>About 2 pm on a sunny day.</b> You are walking to your destination. Two routes lead there:', zh: '<b>晴天，下午 2 点左右。</b>你正步行前往目的地，有两条路线可以到达：' },
+    q5Scene: { en: '<b>About 2 pm on a sunny day, with strong sunshine.</b> You are walking to your destination. Two routes lead there:', zh: '<b>晴天，阳光强烈，下午 2 点左右。</b>你正步行前往目的地，有两条路线可以到达：' },
     q5Short: {
       en: 'The most direct way. Most of it runs along an open footpath beside the main road, with only a short covered stretch.',
       zh: '最直接的路线。大部分路段沿着大马路旁的露天人行道走，只有很短一段有遮盖。' },
