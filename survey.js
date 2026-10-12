@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1012v35';
+  const VERSION = '1013v36';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = STORE + '_done';
   const REVIEW = STORE + '_review';   // 提交后的只读答案快照
@@ -97,7 +97,7 @@
       en: { bus: 'You have just got off the bus.', mrt: 'You have just come out of an MRT station exit.', hdb: 'You are setting off on foot from an HDB block.', other: 'You are setting off on foot.' },
       zh: { bus: '你刚下巴士，', mrt: '你刚走出地铁站出口，', hdb: '你正从一栋组屋步行出发，', other: '你正步行出发，' } },
     q7Cap: { en: 'View at the start of the route', zh: '路线起点处的景象' },
-    p3Kicker: { en: 'Part 3 · Four real situations', zh: '第三部分 · 四个真实情境' },
+    p3Kicker: { en: 'Part 3 · Three real situations', zh: '第三部分 · 三个真实情境' },
     p3Title: { en: 'Before you look at the photos', zh: '看照片之前' },
     pedView: {
       en: '<b>Look at the photos as a pedestrian.</b> They were taken from the road; imagine yourself walking on the footpath beside it. <b>Do not judge by the shadows in the photos</b>, which depend on when each photo was taken. Instead, look at whether trees or shade facilities along the footpath would shade you as you walk. White outlines mark nearby trees and shade facilities (e.g. covered linkways, bus shelters, arcades). To make them easier to see, shade facilities are outlined in the photos, but not all of them necessarily serve the footpath. <b>Based on the walking distance and how much of each route is shaded, choose the route you personally prefer.</b>',
@@ -209,7 +209,7 @@
     return {
       v: VERSION, rid: uuid(), lang, idx: 0, started: new Date().toISOString(), langSwitches: 0,
       assignA: A,                        // which true route is shown as "A"
-      order7: shuffle(sids),                                // 4 个情境全部作答,顺序随机
+      order7: shuffle(sids),                                // 3 个情境全部作答,顺序随机(1013v36 删去 S2)
       q9order: shuffle(C.q9s.map((e) => e.eid)),            // 第 9 题 3 个例子随机顺序
       answers: { q0: {}, q7: {}, q8: {}, q9: {} }, q9visits: {}, seen8: {},
       timing: {},
