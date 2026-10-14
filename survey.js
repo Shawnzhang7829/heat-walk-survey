@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1014v41';
+  const VERSION = '1014v42';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -34,8 +34,8 @@
       en: 'We are researchers studying how people in Singapore walk on hot days, and how shade facilities (arcades / five-foot ways, covered linkways, covered overhead bridges and inter-building corridors) and trees affect which way they go.',
       zh: '我们正在研究新加坡居民在炎热天气中的步行方式，以及骑楼（五脚基）、有顶连廊、有顶人行天桥、楼间连廊等遮荫设施和行道树如何影响人们的路线选择。' },
     introList: {
-      en: ['About 5 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location with your answers', 'At the end you may leave a PayNow mobile number to receive SGD 5 (optional; stored separately from your answers)', 'Participation is voluntary. You may stop at any time by closing this page; unfinished answers are not submitted.', 'Every question needs an answer; you can go back to change earlier answers'],
-      zh: ['约 5 分钟，共 8 题', '匿名作答：答案中不收集姓名、联系方式或位置', '答完后可选填 PayNow 手机号领取 5 新币报酬（号码与答案分开保存）', '参与完全自愿，你可以随时关闭页面退出，未完成的答案不会提交。', '每题必答；可以返回上一题修改答案'] },
+      en: ['About 5 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location', 'After finishing, show the completion screen to the researcher on site to receive SGD 5 in cash', 'Participation is voluntary. You may stop at any time by closing this page; unfinished answers are not submitted.', 'Every question needs an answer; you can go back to change earlier answers'],
+      zh: ['约 5 分钟，共 8 题', '匿名作答：不收集姓名、联系方式或位置', '完成后向现场研究人员出示完成页面，即可领取 5 新币现金报酬', '参与完全自愿，你可以随时关闭页面退出，未完成的答案不会提交。', '每题必答；可以返回上一题修改答案'] },
     consent: { en: 'You must be 21 years or older to take part. By tapping Start, you confirm that you are 21 or older and agree that your anonymous answers may be used for academic research.', zh: '参与者须年满 21 岁。点击「开始」即表示你确认已年满 21 岁，并同意我们将你的匿名答案用于学术研究。' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
@@ -136,20 +136,11 @@
     q9Bars: { en: ['Detour', 'In the sun', 'Length'], zh: ['绕行', '暴晒', '总长度'] },
 
     sending: { en: 'Submitting your answers…', zh: '正在提交答案……' },
-    payKicker: { en: 'Optional · participant payment', zh: '选填 · 参与报酬' },
-    payTitle: { en: 'Receive SGD 5 via PayNow', zh: '通过 PayNow 领取 5 新币报酬' },
-    payLead: { en: 'If you would like to receive SGD 5 for taking part, enter the mobile number registered with PayNow. Payment normally arrives within one week.', zh: '如需领取 5 新币参与报酬，请填写已绑定 PayNow 的手机号，报酬预计 1 周内到账。' },
-    payLabel: { en: 'PayNow mobile number (optional)', zh: 'PayNow 手机号（选填）' },
-    payPlaceholder: { en: 'e.g. 9123 4567', zh: '例如 9123 4567' },
-    payNote: { en: 'Providing a number is voluntary; leave it blank if you do not want payment. Your answers are saved either way. The number is stored separately from your answers and cannot be linked to them; it is used only for the payment and deleted within 30 days after payment.', zh: '填写完全自愿，不需要报酬可留空，答案照样有效。号码与你的答案分开保存、无法对应，只用于付款，付款后 30 天内删除。' },
-    payInvalid: { en: 'Please enter an 8-digit Singapore mobile number starting with 8 or 9, or leave it blank.', zh: '请填写以 8 或 9 开头的 8 位新加坡手机号，或留空。' },
-    paySending: { en: 'Sending your PayNow number…', zh: '正在提交 PayNow 号码……' },
-    payOk: { en: 'Your PayNow number has been received. Payment normally arrives within one week.', zh: '已收到你的 PayNow 号码，报酬预计 1 周内到账。' },
-    payFail: { en: 'Your answers are saved, but the PayNow number could not be sent. Please check your connection and tap “Try again”.', zh: '答案已保存，但 PayNow 号码未提交成功，请检查网络后点「重试」。' },
     sendFail: { en: 'Your answers could not be saved yet. They are kept on this device — please check your connection and tap “Try again”.', zh: '答案暂未保存成功（已暂存在本机）。请检查网络后点「重试」。' },
     retry: { en: 'Try again', zh: '重试' },
     thanks: { en: 'Thank you!', zh: '谢谢参与！' },
     thanksLead: { en: 'Your answers have been saved.', zh: '你的答案已保存。' },
+    cashNote: { en: 'Please show this screen to the researcher to receive SGD 5.', zh: '请向现场研究人员出示本页面，领取 5 新币报酬。' },
     reviewBtn: { en: 'View my answers', zh: '查看我的回答' },
     reviewHide: { en: 'Hide my answers', zh: '收起我的回答' },
     reviewTitle: { en: 'Your answers (view only — they can no longer be changed)', zh: '你的回答（仅供查看，不能修改）' },
@@ -241,8 +232,7 @@
       ...S.order7.flatMap((sid, k) => [
         { id: 'q7_' + sid, sid, k: k + 1, n: S.order7.length, render: rQ7, ok: () => !!S.answers.q7[sid] },
         { id: 'q8_' + sid, sid, k: k + 1, n: S.order7.length, render: rQ8, ok: () => !!S.answers.q8[sid] }]),
-      ...S.q9order.map((eid, k) => ({ id: 'q9_' + eid, eid, k: k + 1, n: S.q9order.length, render: rQ9, ok: () => !!S.answers.q9[eid] })),
-      { id: 'pay', render: rPay, ok: payValid, label: 'submit' },   // 选填 PayNow(不计题号);号码不进答卷
+      ...S.q9order.map((eid, k) => ({ id: 'q9_' + eid, eid, k: k + 1, n: S.q9order.length, render: rQ9, ok: () => !!S.answers.q9[eid], label: k === S.q9order.length - 1 ? 'submit' : undefined })),
       { id: 'end', render: rEnd, ok: () => false, final: true },
     ];
   }
@@ -276,7 +266,7 @@
     const ok = !!sc.ok();
     $('next').disabled = !ok;
     const lockedPrev = (sc.id === 'q6' || sc.id.startsWith('q8_')) && ok;
-    $('hint').textContent = ok ? (lockedPrev ? tr('lockedNote') : '') : (sc.id === 'intro' ? '' : sc.id === 'pay' ? tr('payInvalid') : tr('needAll'));
+    $('hint').textContent = ok ? (lockedPrev ? tr('lockedNote') : '') : (sc.id === 'intro' ? '' : tr('needAll'));
   }
   function answered() {
     const sc = screens[S.idx]; const t = S.timing[sc.id];
@@ -640,26 +630,6 @@
     drawMap(S.answers.q9[eid]); drawBars(S.answers.q9[eid]); drawPanel(S.answers.q9[eid]);
   }
 
-  // ---------- PayNow(选填;号码只在本页和单独的付款请求里出现,不进答卷、不进答案快照) ----------
-  const payNorm = (x) => String(x || '').replace(/[\s-]/g, '').replace(/^\+?65(?=\d{8}$)/, '');
-  function payValid() { const m = payNorm(S.pay); return m === '' || /^[89]\d{7}$/.test(m); }
-  function rPay() {
-    const inp = el('input', { type: 'tel', inputmode: 'numeric', autocomplete: 'tel-national', maxlength: 14, class: 'payin', placeholder: tr('payPlaceholder'), value: S.pay || '' });
-    inp.addEventListener('input', () => { S.pay = inp.value; save(); updateNext(); });
-    put(...head(tr('payKicker'), tr('payTitle'), tr('payLead')), el('label', { class: 'field' }, el('span', { class: 'label' }, tr('payLabel')), inp), el('p', { class: 'note' }, tr('payNote')));
-  }
-  async function sendPay(m, st) {
-    st.replaceChildren(el('p', { class: 'center note' }, tr('paySending')));
-    try {
-      const res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ type: 'pay', mobile: m }) });   // 不带答卷编号、时间等任何答卷信息
-      const j = await res.json();
-      if (!res.ok || !j || j.ok !== true) throw new Error((j && j.error) || 'HTTP ' + res.status);
-      st.replaceChildren(el('p', { class: 'center pay-ok' }, tr('payOk')));
-    } catch (e) {
-      st.replaceChildren(el('p', { class: 'err' }, tr('payFail')), el('p', { class: 'center' }, el('button', { type: 'button', class: 'next', onclick: () => sendPay(m, st) }, tr('retry'))));
-    }
-  }
-
   // ---------- submit / end ----------
   function payload() {
     const A = S.assignA, a = S.answers;
@@ -694,16 +664,14 @@
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const j = await res.json();
       if (!j || j.ok !== true) throw new Error((j && j.error) || 'not saved');
-      const m = payNorm(S.pay); delete S.pay;                  // 号码先从本机状态里移除,再单独发送
       S._sent = true; setDone(); thanks(box);
-      if (m) { const st = el('div', { class: 'pay-status' }); box.insertBefore(st, box.children[3] || null); sendPay(m, st); }
     } catch (e) {
       box.replaceChildren(el('p', { class: 'err' }, tr('sendFail')), el('p', { class: 'note' }, `(${String((e && e.message) || e).slice(0, 120)})`),
         el('button', { type: 'button', class: 'next', onclick: () => submit(box) }, tr('retry')));
     }
   }
   function thanks(box) {
-    box.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('h1', { class: 'center' }, tr('thanks')), el('p', { class: 'center lead' }, tr('thanksLead')),
+    box.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('h1', { class: 'center' }, tr('thanks')), el('p', { class: 'center lead' }, tr('thanksLead')), el('p', { class: 'center cash' }, tr('cashNote')),
       el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, S.rid.slice(0, 8).toUpperCase())),
       reviewToggle(loadReview() || { rid: S.rid, answers: S.answers, assignA: S.assignA, order7: S.order7, q9order: S.q9order }));
   }
@@ -754,8 +722,10 @@
   function rEnd() { const box = el('div'); put(box); if (S._sent) thanks(box); else submit(box); }
   function rAlready() {
     $('bottom').hidden = true;
-    main.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('p', { class: 'center' }, tr('already')),
-      ...[reviewToggle(loadReview())].filter(Boolean));            // 只能查看自己的答案,不提供重新作答入口
+    const rv = loadReview();
+    main.replaceChildren(...[el('div', { class: 'done-icon' }, '✓'), el('p', { class: 'center' }, tr('already')),
+      rv && rv.rid ? el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, String(rv.rid).slice(0, 8).toUpperCase())) : null,
+      reviewToggle(rv)].filter(Boolean));                           // 只能查看自己的答案,不提供重新作答入口
   }
 
   // ---------- lightbox ----------
