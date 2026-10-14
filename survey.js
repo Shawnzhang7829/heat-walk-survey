@@ -5,10 +5,10 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1013v39';
+  const VERSION = '1014v40';
   const STORE = 'shadewalk_survey_' + VERSION;
-  const DONE = STORE + '_done';
-  const REVIEW = STORE + '_review';   // 提交后的只读答案快照
+  const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
+  const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
   const CFG = window.SURVEY_CONFIG || {};                 // config.js:提交地址(Google Apps Script Web App)与联系方式
   const API = CFG.submitUrl || '';
   const CONTACT = CFG.contact || { en: '', zh: '' };   // optional researcher contact / ethics line shown on the intro screen
@@ -145,7 +145,6 @@
     reviewTitle: { en: 'Your answers (view only — they can no longer be changed)', zh: '你的回答（仅供查看，不能修改）' },
     code: { en: 'Response code', zh: '答卷编号' },
     already: { en: 'You have already completed this survey on this device. Thank you!', zh: '你已在本设备上完成过本问卷，谢谢！' },
-    again: { en: 'Someone else using this device? Start a new response', zh: '其他人使用本设备？开始新的答卷' },
     loadFail: { en: 'The survey could not be loaded. Please refresh the page.', zh: '问卷加载失败，请刷新页面。' },
   };
 
@@ -723,8 +722,7 @@
   function rAlready() {
     $('bottom').hidden = true;
     main.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('p', { class: 'center' }, tr('already')),
-      ...[reviewToggle(loadReview())].filter(Boolean),
-      el('p', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn', onclick: () => { try { localStorage.removeItem(DONE); localStorage.removeItem(REVIEW); } catch (e) { } boot(true); } }, tr('again'))));
+      ...[reviewToggle(loadReview())].filter(Boolean));            // 只能查看自己的答案,不提供重新作答入口
   }
 
   // ---------- lightbox ----------
