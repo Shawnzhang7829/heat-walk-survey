@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1019v44';
+  const VERSION = '1019v45';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -134,7 +134,7 @@
     q9DetourRate: { en: 'Detour rate', zh: '绕行率' },
     q9Shortest: { en: 'shortest route', zh: '最短路线' },
     q9vsShort: { en: (d) => `${d} vs. shortest`, zh: (d) => `较最短路线 ${d}` },
-    q9Bars: { en: ['Detour', 'In the sun', 'Length'], zh: ['绕行', '暴晒', '总长度'] },
+    q9Bars: { en: ['Detour', 'In the sun', 'Longest in sun', 'Length'], zh: ['绕行', '暴晒', '最长连续暴晒', '总长度'] },
 
     sending: { en: 'Submitting your answers…', zh: '正在提交答案……' },
     sendFail: { en: 'Your answers could not be saved yet. They are kept on this device — please check your connection and tap “Try again”.', zh: '答案暂未保存成功（已暂存在本机）。请检查网络后点「重试」。' },
@@ -570,13 +570,13 @@
   function rQ9(sc) {
     const q = C.q9s.find((e) => e.eid === sc.eid), lv = q.levels, N = lv.length, eid = sc.eid;
     const visits = S.q9visits[eid] || (S.q9visits[eid] = []);
-    const shortest = lv[N - 1].m, maxExtra = lv[0].m.extra, maxSun = shortest.sun, maxLen = Math.max(...lv.map((x) => x.m.len));
+    const shortest = lv[N - 1].m, maxExtra = lv[0].m.extra, maxSun = shortest.sun, maxLen = Math.max(...lv.map((x) => x.m.len)), maxLsun = Math.max(...lv.map((x) => x.m.lsun || 0)), maxSunBar = Math.max(maxSun, maxLsun);   // 暴晒与最长连续暴晒共用一个刻度
     const mapBox = el('div');
     const panel = el('div', { class: 'panel' });
     const barsBox = el('div', { class: 'q9bars' });
-    const drawBars = (k) => {                                      // 滑块正下方的"绕行 / 暴晒 / 总长度"柱状图
+    const drawBars = (k) => {                                      // 滑块正下方的"绕行 / 暴晒 / 最长连续暴晒 / 总长度"柱状图
       const m = k ? lv[k - 1].m : null;
-      barsBox.replaceChildren(...[[tr('q9Bars')[0], m && m.extra, maxExtra, '#6E8FA8'], [tr('q9Bars')[1], m && m.sun, maxSun, '#E8A33D'], [tr('q9Bars')[2], m && m.len, maxLen, '#5F6670']].map(([lab, v, mx, col]) =>
+      barsBox.replaceChildren(...[[tr('q9Bars')[0], m && m.extra, maxExtra, '#6E8FA8'], [tr('q9Bars')[1], m && m.sun, maxSunBar, '#E8A33D'], [tr('q9Bars')[2], m && m.lsun, maxSunBar, '#C2410C'], [tr('q9Bars')[3], m && m.len, maxLen, '#5F6670']].map(([lab, v, mx, col]) =>
         el('div', { class: 'q9bar' },
           el('span', { class: 'lab' }, lab),
           el('span', { class: 'track' }, el('i', { style: `width:${m && mx ? (100 * v) / mx : 0}%;background:${col}` })),
@@ -594,11 +594,11 @@
       const m = lv[k - 1].m; panel.className = 'panel';
       const sunDelta = m.sun - shortest.sun, shDelta = m.sigma - shortest.sigma;
       const rows = [
+        [tr('q9Time'), tr('mMin', Math.round(m.min))],                // 步行时间放在第一行
         [tr('q9Detour'), m.extra > 0 ? `+${fmt(m.extra)} m` : `0 m · ${tr('q9Shortest')}`],
         [tr('q9Sun'), `${fmt(m.sun)} m`, sunDelta ? tr('q9vsShort', `${sunDelta > 0 ? '+' : '−'}${fmt(Math.abs(sunDelta))} m`) : ''],
         [tr('q9Shade'), `${m.sigma}%`, shDelta ? tr('q9vsShort', `${shDelta > 0 ? '+' : '−'}${Math.abs(shDelta)}${S.lang === 'zh' ? ' 个百分点' : ' pp'}`) : ''],
         [tr('q9DetourRate'), `+${m.extra_pct}%`, m.extra > 0 ? '' : tr('q9Shortest')],
-        [tr('q9Time'), tr('mMin', Math.round(m.min))],
       ];
       panel.replaceChildren(el('h3', {}, tr('q9Option', k)),
         ...rows.map(([k_, v, d]) => el('div', { class: 'row' }, el('span', {}, k_), el('span', { class: 'v' }, v, d ? el('div', { class: 'delta' }, d) : null))));
