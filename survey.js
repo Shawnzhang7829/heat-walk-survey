@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1019v45';
+  const VERSION = '1019v46';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -589,12 +589,16 @@
       const p0 = lv[N - 1].path;
       mapBox.replaceChildren(mapView(q.map, lines, [p0[0], p0[p0.length - 1]]));
     };
+    const timeBox = el('div', { class: 'q9time' });                  // 步行时间:放在地图正下方、滑块上方,随所选方案更新
+    const drawTime = (k) => {
+      timeBox.replaceChildren(el('span', { class: 'lab' }, tr('q9Time')),
+        el('span', { class: 'v' }, k ? tr('mMin', Math.round(lv[k - 1].m.min)) : '–'), k ? el('span', { class: 'which' }, tr('q9Option', k)) : null);
+    };
     const drawPanel = (k) => {
       if (!k) { panel.className = 'panel empty'; panel.replaceChildren(tr('q9Empty')); return; }
       const m = lv[k - 1].m; panel.className = 'panel';
       const sunDelta = m.sun - shortest.sun, shDelta = m.sigma - shortest.sigma;
       const rows = [
-        [tr('q9Time'), tr('mMin', Math.round(m.min))],                // 步行时间放在第一行
         [tr('q9Detour'), m.extra > 0 ? `+${fmt(m.extra)} m` : `0 m · ${tr('q9Shortest')}`],
         [tr('q9Sun'), `${fmt(m.sun)} m`, sunDelta ? tr('q9vsShort', `${sunDelta > 0 ? '+' : '−'}${fmt(Math.abs(sunDelta))} m`) : ''],
         [tr('q9Shade'), `${m.sigma}%`, shDelta ? tr('q9vsShort', `${shDelta > 0 ? '+' : '−'}${Math.abs(shDelta)}${S.lang === 'zh' ? ' 个百分点' : ' pp'}`) : ''],
@@ -614,7 +618,7 @@
       if (S.answers.q9[eid] === k) return;
       S.answers.q9[eid] = k; visits.push([k, now()]);
       stops.forEach((b, i) => b.setAttribute('aria-checked', String(i + 1 === k)));
-      drawMap(k); drawBars(k); drawPanel(k); answered();
+      drawMap(k); drawTime(k); drawBars(k); drawPanel(k); answered();
     };
     const fromX = (x) => { const r = track.getBoundingClientRect(); const f = (x - r.left - 14) / (r.width - 28); return Math.max(1, Math.min(N, Math.round(f * (N - 1)) + 1)); };
     let drag = false;
@@ -629,8 +633,8 @@
     });
     const slider = el('div', { class: 'slider', role: 'radiogroup' }, track,
       el('div', { class: 'ends' }, el('span', {}, tr('q9Left', fmt(maxExtra))), el('span', {}, tr('q9Right', fmt(maxSun)))));
-    put(...head(tr('part4', sc.k, sc.n), tr('q9Title')), el('div', { class: 'scene', html: tr('q9Scene', fmt(q.L0 || lv[N - 1].m.len)) }), mapBox, el('p', { class: 'note' }, tr('q9How')), slider, barsBox, panel);
-    drawMap(S.answers.q9[eid]); drawBars(S.answers.q9[eid]); drawPanel(S.answers.q9[eid]);
+    put(...head(tr('part4', sc.k, sc.n), tr('q9Title')), el('div', { class: 'scene', html: tr('q9Scene', fmt(q.L0 || lv[N - 1].m.len)) }), mapBox, timeBox, el('p', { class: 'note' }, tr('q9How')), slider, barsBox, panel);
+    drawMap(S.answers.q9[eid]); drawTime(S.answers.q9[eid]); drawBars(S.answers.q9[eid]); drawPanel(S.answers.q9[eid]);
   }
 
   // ---------- submit / end ----------

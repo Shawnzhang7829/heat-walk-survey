@@ -202,3 +202,5 @@ ul.plain li { margin: 4px 0; }
 .legend i.block { height: 12px; width: 20px; opacity: .5; border-radius: 2px; }
 .cash { color: #15803D; font-weight: 700; font-size: 17px; }
 .note.frozen { background: #FFF4E5; border-left: 4px solid #F08C00; padding: 8px 12px; border-radius: 8px; color: #7A4A00; }
+.q9time { display: flex; align-items: baseline; gap: 10px; background: var(--card); border: 1.5px solid var(--accent); border-radius: 12px; padding: 10px 14px; margin: 10px 0 6px; }
+.q9time .lab { font-weight: 600; white-space: nowrap; } .q9time .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; } .q9time .which { margin-left: auto; color: var(--muted); font-size: 13px; white-space: nowrap; }
