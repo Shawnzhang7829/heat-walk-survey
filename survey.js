@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1014v43';
+  const VERSION = '1019v44';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -20,7 +20,8 @@
     submit: { en: 'Submit', zh: '提交' },
     needAll: { en: 'Please answer every item to continue.', zh: '请回答本页所有题目后继续。' },
     back: { en: 'Back', zh: '上一题' },
-    lockedNote: { en: 'Your answer to the previous question is saved and can no longer be changed.', zh: '上一题的答案已保存，不能再修改。' },
+    lockedNote: { en: 'Your answer to the previous question is saved: you can go back to view it, but it can no longer be changed.', zh: '上一题的答案已保存：可以返回查看，但不能再修改。' },
+    q5Frozen: { en: 'View only: this answer can no longer be changed, because the next question showed more information about the same trip.', zh: '仅供查看：下一题已经显示了同一段行程的更多信息，本题答案不能再修改。' },
     step: { en: (a, b) => `${a} / ${b}`, zh: (a, b) => `${a} / ${b}` },
     tapZoom: { en: 'Tap to enlarge', zh: '点击放大' },
     chooseRoute: { en: (x) => `Choose route ${x}`, zh: (x) => `选择路线 ${x}` },
@@ -280,7 +281,7 @@
   // 信息递进的前一题在看到后一题后锁定:进入 Q6 后 Q5 锁定,进入 Q8 后 Q7 锁定;前进/返回都跳过锁定题
   function isLocked(sc) {
     const R = S.reached || {};
-    return (sc.id === 'q5' && !!R.q6) || (sc.id.startsWith('q7_') && !!R['q8_' + sc.sid]);
+    return sc.id.startsWith('q7_') && !!R['q8_' + sc.sid];        // 第 6 题(q5)不再跳过:进入第 7 题后可返回查看,但只读(见 rQ5)
   }
   function backTarget() {
     let t = S.idx - 1;
@@ -445,9 +446,11 @@
 
 
   // ---------- Q5 / Q6 ----------
+  const q5Frozen = () => !!(S.reached || {}).q6;                  // 已看过第 7 题:第 6 题只读
   function rQ5() {
     put(...head(tr('part2'), tr('q5Title')), el('div', { class: 'scene', html: tr('q5Scene') }),
-      routePair('q5', S.answers, S.assignA.q56, (L, side) => el('p', { class: 'rtext' }, side === 'short' ? tr('q5Short') : tr('q5Cool'))));
+      q5Frozen() ? el('p', { class: 'note frozen' }, tr('q5Frozen')) : null,
+      routePair('q5', S.answers, S.assignA.q56, (L, side) => el('p', { class: 'rtext' }, side === 'short' ? tr('q5Short') : tr('q5Cool')), { locked: q5Frozen }));
   }
   // ref = 路线 A 的指标:给路线 B 的每个指标显示相对 A 的变化量(按显示值相减,保证与页面数字一致)
   function metricBody(m, ref) {

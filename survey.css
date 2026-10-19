@@ -201,3 +201,4 @@ ul.plain li { margin: 4px 0; }
 .pedview.big { font-size: 17px; line-height: 1.65; padding: 16px 16px; margin-top: 18px; }
 .legend i.block { height: 12px; width: 20px; opacity: .5; border-radius: 2px; }
 .cash { color: #15803D; font-weight: 700; font-size: 17px; }
+.note.frozen { background: #FFF4E5; border-left: 4px solid #F08C00; padding: 8px 12px; border-radius: 8px; color: #7A4A00; }
