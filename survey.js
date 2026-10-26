@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1026v48';
+  const VERSION = '1026v49';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -37,7 +37,7 @@
     introList: {
       en: ['About 5 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location', 'After finishing, show the completion screen to the researcher on site to receive SGD 5 in cash', 'Participation is voluntary. You may stop at any time before submitting by closing this page; unfinished answers are not submitted. Because the questionnaire is anonymous, answers cannot be withdrawn after submission.', 'Every question needs an answer; you can go back to change earlier answers'],
       zh: ['约 5 分钟，共 8 题', '匿名作答：不收集姓名、联系方式或位置', '完成后向现场研究人员出示完成页面，即可领取 5 新币现金报酬', '参与完全自愿，你可以在提交前随时关闭页面退出，未完成的答案不会提交。由于问卷匿名，答案提交后无法撤回。', '每题必答；可以返回上一题修改答案'] },
-    consent: { en: 'You must be 21 years or older and have lived in Singapore for at least 6 months to take part. By tapping Start, you confirm that you are 21 or older, have lived in Singapore for at least 6 months, and agree that your anonymous answers may be used for academic research.', zh: '参与者须年满 21 岁，并在新加坡居住满 6 个月。点击「开始」即表示你确认已年满 21 岁、在新加坡居住满 6 个月，并同意我们将你的匿名答案用于学术研究。' },
+    consent: { en: 'You must be aged 21 to 64 and have lived in Singapore for at least 6 months to take part. By tapping Start, you confirm that you are aged 21 to 64, have lived in Singapore for at least 6 months, and agree that your anonymous answers may be used for academic research.', zh: '参与者须为 21 至 64 岁，并在新加坡居住满 6 个月。点击「开始」即表示你确认年龄在 21 至 64 岁之间、在新加坡居住满 6 个月，并同意我们将你的匿名答案用于学术研究。' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
     part1: { en: 'Part 1 · About you and shade facilities', zh: '第一部分 · 个人信息与遮荫设施' },
@@ -45,7 +45,7 @@
     gender: { en: 'Gender', zh: '性别' },
     genderOpts: { en: ['Male', 'Female', 'Prefer not to say'], zh: ['男', '女', '不愿透露'] },
     age: { en: 'Age', zh: '年龄' },
-    ageOpts: { en: ['21–24', '25–34', '35–44', '45–54', '55–64', '65+'], zh: ['21–24', '25–34', '35–44', '45–54', '55–64', '65 岁及以上'] },
+    ageOpts: { en: ['21–24', '25–34', '35–44', '45–54', '55–64'], zh: ['21–24', '25–34', '35–44', '45–54', '55–64'] },
 
     q1Title: { en: 'On your usual commute, how often do you come across or use shade facilities like these?', zh: '你平时通勤出行时，大约多频繁会经过或使用这类遮荫设施？' },
     q1Lead: { en: 'Shade facilities: the four types shown below. Tap a photo to enlarge.', zh: '遮荫设施（shade facility）指下面四类。点击照片可放大。' },
@@ -149,7 +149,7 @@
 
   const Q1V = ['every', 'half', 'lesshalf', 'never'], Q2V = ['seek', 'notice', 'rarely'], Q3V = ['yes', 'no'], Q4V = ['yes', 'no'];
   const SHADE_BLOCK = '#16A34A';                          // 第 7 题地图遮荫色块(半透明绿)
-  const GENDER = ['male', 'female', 'na'], AGE = ['21-24', '25-34', '35-44', '45-54', '55-64', '65+'];
+  const GENDER = ['male', 'female', 'na'], AGE = ['21-24', '25-34', '35-44', '45-54', '55-64'];
 
   let C = null;      // content.json
   let S = null;      // respondent state
@@ -637,8 +637,8 @@
     const A = S.assignA, a = S.answers;
     const pick = (assign, letter) => (letter ? sideOf(assign, letter) : null);
     const out = {
-      v: VERSION, rid: S.rid, lang: S.lang, langSwitches: S.langSwitches, started: S.started, finished: new Date().toISOString(),
-      ua: navigator.userAgent, screen: [screen.width, screen.height, window.devicePixelRatio || 1], tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      v: VERSION, rid: S.rid, lang: S.lang, langSwitches: S.langSwitches,
+      dur_min: Math.round((Date.now() - Date.parse(S.started)) / 6000) / 10,   // 只记作答用时;不发送开始/提交时刻与任何设备信息
       q0: a.q0, q1: a.q1, q2: a.q2, q3: a.q3, q4: a.q4,
       q5: { letter: a.q5, route: pick(A.q56, a.q5), A: A.q56 },
       q6: { letter: a.q6, route: pick(A.q56, a.q6), A: A.q56 },
