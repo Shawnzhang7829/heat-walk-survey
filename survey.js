@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1019v46';
+  const VERSION = '1026v47';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -35,8 +35,8 @@
       en: 'This study aims to improve shade facilities in Singapore. We are researchers studying how people in Singapore walk on hot days, and how shade facilities (arcades / five-foot ways, covered linkways, covered overhead bridges and inter-building corridors) and trees affect which way they go.',
       zh: '这是一项旨在改善新加坡遮荫设施的研究。我们正在研究新加坡居民在炎热天气中的步行方式，以及骑楼（五脚基）、有顶连廊、有顶人行天桥、楼间连廊等遮荫设施和行道树如何影响人们的路线选择。' },
     introList: {
-      en: ['About 5 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location', 'After finishing, show the completion screen to the researcher on site to receive SGD 5 in cash', 'Participation is voluntary. You may stop at any time by closing this page; unfinished answers are not submitted.', 'Every question needs an answer; you can go back to change earlier answers'],
-      zh: ['约 5 分钟，共 8 题', '匿名作答：不收集姓名、联系方式或位置', '完成后向现场研究人员出示完成页面，即可领取 5 新币现金报酬', '参与完全自愿，你可以随时关闭页面退出，未完成的答案不会提交。', '每题必答；可以返回上一题修改答案'] },
+      en: ['About 5 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location', 'After finishing, show the completion screen to the researcher on site to receive SGD 5 in cash', 'Participation is voluntary. You may stop at any time before submitting by closing this page; unfinished answers are not submitted. Because the questionnaire is anonymous, answers cannot be withdrawn after submission.', 'Every question needs an answer; you can go back to change earlier answers'],
+      zh: ['约 5 分钟，共 8 题', '匿名作答：不收集姓名、联系方式或位置', '完成后向现场研究人员出示完成页面，即可领取 5 新币现金报酬', '参与完全自愿，你可以在提交前随时关闭页面退出，未完成的答案不会提交。由于问卷匿名，答案提交后无法撤回。', '每题必答；可以返回上一题修改答案'] },
     consent: { en: 'You must be 21 years or older and have lived in Singapore for at least 6 months to take part. By tapping Start, you confirm that you are 21 or older, have lived in Singapore for at least 6 months, and agree that your anonymous answers may be used for academic research.', zh: '参与者须年满 21 岁，并在新加坡居住满 6 个月。点击「开始」即表示你确认已年满 21 岁、在新加坡居住满 6 个月，并同意我们将你的匿名答案用于学术研究。' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
