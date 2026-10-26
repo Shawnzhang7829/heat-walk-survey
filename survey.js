@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1026v52';
+  const VERSION = '1026v53';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -47,7 +47,8 @@
         '我可以在提交前随时关闭页面退出，未完成的答案不会保存。由于问卷匿名，答案提交后无法撤回。',
         '只有完成并提交问卷后，我才会获得 5 新币现金报酬；如果不同意参加，或在提交前退出，则不会获得报酬。',
         '我不会因本研究的商业开发而获得任何经济利益。'] },
-    pisLink: { en: 'Read the full Participant Information Sheet (PDF)', zh: '阅读完整的参与者信息说明书（英文 PDF）' },
+    pisLink: { en: 'Read the full Participant Information Sheet (PDF)', zh: '阅读完整的参与者信息说明书（PDF）' },
+    pisHref: { en: 'pis_en.pdf', zh: 'pis_zh.pdf' },
     agreeBtn: { en: 'I agree and take part', zh: '我同意并参加' },
     disagreeBtn: { en: 'I do not agree – exit', zh: '不同意，退出' },
     continueBtn: { en: 'Continue', zh: '继续答题' },
@@ -441,7 +442,7 @@
       el('ul', { class: 'plain' }, ...tr('introList').map((x) => el('li', {}, x))),
       el('div', { class: 'consent' }, el('p', { class: 'chead' }, tr('consent')),
         el('ol', {}, ...tr('consentItems').map((x) => el('li', {}, x))),
-        el('p', { class: 'note' }, el('a', { href: 'pis_en.pdf', target: '_blank', rel: 'noopener' }, tr('pisLink')))),
+        el('p', { class: 'note' }, el('a', { href: tr('pisHref'), target: '_blank', rel: 'noopener' }, tr('pisLink')))),
       CONTACT[S.lang] ? el('p', { class: 'note' }, CONTACT[S.lang]) : null,
       S._resumed ? el('p', { class: 'note' }, tr('resumed')) : null);
   }
