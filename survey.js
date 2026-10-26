@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1026v51';
+  const VERSION = '1026v52';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -20,8 +20,6 @@
     submit: { en: 'Submit', zh: '提交' },
     needAll: { en: 'Please answer every item to continue.', zh: '请回答本页所有题目后继续。' },
     back: { en: 'Back', zh: '上一题' },
-    lockedNote: { en: 'Your answer to the previous question is saved: you can go back to view it, but it can no longer be changed.', zh: '上一题的答案已保存：可以返回查看，但不能再修改。' },
-    q5Frozen: { en: 'View only: this answer can no longer be changed, because the next question showed more information about the same trip.', zh: '仅供查看：下一题已经显示了同一段行程的更多信息，本题答案不能再修改。' },
     step: { en: (a, b) => `${a} / ${b}`, zh: (a, b) => `${a} / ${b}` },
     tapZoom: { en: 'Tap to enlarge', zh: '点击放大' },
     chooseRoute: { en: (x) => `Choose route ${x}`, zh: (x) => `选择路线 ${x}` },
@@ -156,6 +154,7 @@
     retry: { en: 'Try again', zh: '重试' },
     thanks: { en: 'Thank you!', zh: '谢谢参与！' },
     thanksLead: { en: 'Your answers have been saved.', zh: '你的答案已保存。' },
+    noShare: { en: 'Please do not share the questionnaire link or QR code with others.', zh: '请勿将问卷链接或二维码转发给他人。' },
     cashNote: { en: 'Please show this screen to the researcher to receive SGD 5.', zh: '请向现场研究人员出示本页面，领取 5 新币报酬。' },
     reviewBtn: { en: 'View my answers', zh: '查看我的回答' },
     reviewHide: { en: 'Hide my answers', zh: '收起我的回答' },
@@ -281,8 +280,7 @@
     const sc = screens[S.idx];
     const ok = !!sc.ok();
     $('next').disabled = !ok;
-    const lockedPrev = (sc.id === 'q6' || sc.id.startsWith('q8_')) && ok;
-    $('hint').textContent = ok ? (lockedPrev ? tr('lockedNote') : '') : (sc.id === 'intro' ? '' : tr('needAll'));
+    $('hint').textContent = ok ? '' : (sc.id === 'intro' ? '' : tr('needAll'));
   }
   function answered() {
     const sc = screens[S.idx]; const t = S.timing[sc.id];
@@ -296,7 +294,7 @@
   // 信息递进的前一题在看到后一题后锁定:进入 Q6 后 Q5 锁定,进入 Q8 后 Q7 锁定;前进/返回都跳过锁定题
   function isLocked(sc) {
     const R = S.reached || {};
-    return sc.id.startsWith('q7_') && !!R['q8_' + sc.sid];        // 第 6 题(q5)不再跳过:进入第 7 题后可返回查看,但只读(见 rQ5)
+    return sc.id.startsWith('q7_') && !!R['q8_' + sc.sid];        // 只锁情境题第 1 步(当前版本无情境题);第 6 题(q5)可随时返回修改
   }
   function backTarget() {
     let t = S.idx - 1;
@@ -304,6 +302,7 @@
     return t >= 0 && !screens[S.idx].final ? t : -1;          // 可返回首页(说明与同意书)
   }
   function go(t) {
+    if (screens[S.idx] && screens[S.idx].id === 'q5' && S.q5First == null && S.answers.q5) S.q5First = S.answers.q5;   // 第 6 题首次答案
     leave(); S.idx = t; render();
     window.scrollTo(0, 0); main.focus({ preventScroll: true });
     preloadAhead();
@@ -473,11 +472,9 @@
 
 
   // ---------- Q5 / Q6 ----------
-  const q5Frozen = () => !!(S.reached || {}).q6;                  // 已看过第 7 题:第 6 题只读
   function rQ5() {
     put(...head(tr('part2'), tr('q5Title')), el('div', { class: 'scene', html: tr('q5Scene') }),
-      q5Frozen() ? el('p', { class: 'note frozen' }, tr('q5Frozen')) : null,
-      routePair('q5', S.answers, S.assignA.q56, (L, side) => el('p', { class: 'rtext' }, side === 'short' ? tr('q5Short') : tr('q5Cool')), { locked: q5Frozen }));
+      routePair('q5', S.answers, S.assignA.q56, (L, side) => el('p', { class: 'rtext' }, side === 'short' ? tr('q5Short') : tr('q5Cool'))));
   }
   // ref = 路线 A 的指标:给路线 B 的每个指标显示相对 A 的变化量(按显示值相减,保证与页面数字一致)
   function metricBody(m, ref) {
@@ -672,7 +669,7 @@
       v: VERSION, rid: S.rid, lang: S.lang, langSwitches: S.langSwitches, consent: S.consented ? 1 : 0,
       dur_min: Math.round((Date.now() - Date.parse(S.started)) / 6000) / 10,   // 只记作答用时;不发送开始/提交时刻与任何设备信息
       q0: a.q0, q1: a.q1, q2: a.q2, q3: a.q3, q4: a.q4,
-      q5: { letter: a.q5, route: pick(A.q56, a.q5), A: A.q56 },
+      q5: { letter: a.q5, route: pick(A.q56, a.q5), A: A.q56, first_route: pick(A.q56, S.q5First || a.q5), changed: S.q5First && S.q5First !== a.q5 ? 1 : 0 },
       q6: { letter: a.q6, route: pick(A.q56, a.q6), A: A.q56 },
       q9: Object.fromEntries(C.q9s.map((e) => [e.eid, { level: a.q9[e.eid], lam: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam : null,
         lam_lo: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam_lo : null, lam_hi: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam_hi : null, trip_m: e.L0 || null,
@@ -705,7 +702,7 @@
     }
   }
   function thanks(box) {
-    box.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('h1', { class: 'center' }, tr('thanks')), el('p', { class: 'center lead' }, tr('thanksLead')), el('p', { class: 'center cash' }, tr('cashNote')),
+    box.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('h1', { class: 'center' }, tr('thanks')), el('p', { class: 'center lead' }, tr('thanksLead')), el('p', { class: 'center cash' }, tr('cashNote')), el('p', { class: 'center note' }, tr('noShare')),
       el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, S.rid.slice(0, 8).toUpperCase())),
       reviewToggle(loadReview() || { rid: S.rid, answers: S.answers, assignA: S.assignA, order7: S.order7, q9order: S.q9order }));
   }
