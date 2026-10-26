@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1026v49';
+  const VERSION = '1026v50';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -35,9 +35,27 @@
       en: 'This study aims to improve shade facilities in Singapore. We are researchers studying how people in Singapore walk on hot days, and how shade facilities (arcades / five-foot ways, covered linkways, covered overhead bridges and inter-building corridors) and trees affect which way they go.',
       zh: '这是一项旨在改善新加坡遮荫设施的研究。我们正在研究新加坡居民在炎热天气中的步行方式，以及骑楼（五脚基）、有顶连廊、有顶人行天桥、楼间连廊等遮荫设施和行道树如何影响人们的路线选择。' },
     introList: {
-      en: ['About 5 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location', 'After finishing, show the completion screen to the researcher on site to receive SGD 5 in cash', 'Participation is voluntary. You may stop at any time before submitting by closing this page; unfinished answers are not submitted. Because the questionnaire is anonymous, answers cannot be withdrawn after submission.', 'Every question needs an answer; you can go back to change earlier answers'],
-      zh: ['约 5 分钟，共 8 题', '匿名作答：不收集姓名、联系方式或位置', '完成后向现场研究人员出示完成页面，即可领取 5 新币现金报酬', '参与完全自愿，你可以在提交前随时关闭页面退出，未完成的答案不会提交。由于问卷匿名，答案提交后无法撤回。', '每题必答；可以返回上一题修改答案'] },
-    consent: { en: 'You must be aged 21 to 64 and have lived in Singapore for at least 6 months to take part. By tapping Start, you confirm that you are aged 21 to 64, have lived in Singapore for at least 6 months, and agree that your anonymous answers may be used for academic research.', zh: '参与者须为 21 至 64 岁，并在新加坡居住满 6 个月。点击「开始」即表示你确认年龄在 21 至 64 岁之间、在新加坡居住满 6 个月，并同意我们将你的匿名答案用于学术研究。' },
+      en: ['About 5 minutes, 8 questions', 'Anonymous: we do not collect your name, contact details or location', 'After finishing, show the completion screen to the researcher on site to receive SGD 5 in cash', 'Every question needs an answer; you can go back to change earlier answers'],
+      zh: ['约 5 分钟，共 8 题', '匿名作答：不收集姓名、联系方式或位置', '完成后向现场研究人员出示完成页面，即可领取 5 新币现金报酬', '每题必答；可以返回上一题修改答案'] },
+    consent: { en: 'Consent. By tapping “I agree and take part”, I confirm that:', zh: '知情同意。点击「我同意并参加」即表示我确认：' },
+    consentItems: {
+      en: ['I have read the information on this page and the Participant Information Sheet, and I agree to take part in this research.',
+        'I am aged 21 to 64 and have lived in Singapore for at least 6 months.',
+        'I can stop at any time before submitting by closing this page, and my unfinished answers will not be kept. Because the questionnaire is anonymous, once I have submitted it is not possible to withdraw my answers.',
+        'I will receive SGD 5 in cash only after I complete and submit the questionnaire. If I do not agree, or stop before submitting, I will not receive the payment.',
+        'I will not have any financial benefits that result from the commercial development of this research.'],
+      zh: ['我已阅读本页信息及参与者信息说明书，同意参加本研究。',
+        '我的年龄在 21 至 64 岁之间，并在新加坡居住满 6 个月。',
+        '我可以在提交前随时关闭页面退出，未完成的答案不会保存。由于问卷匿名，答案提交后无法撤回。',
+        '只有完成并提交问卷后，我才会获得 5 新币现金报酬；如果不同意参加，或在提交前退出，则不会获得报酬。',
+        '我不会因本研究的商业开发而获得任何经济利益。'] },
+    pisLink: { en: 'Read the full Participant Information Sheet (PDF)', zh: '阅读完整的参与者信息说明书（英文 PDF）' },
+    agreeBtn: { en: 'I agree and take part', zh: '我同意并参加' },
+    disagreeBtn: { en: 'I do not agree – exit', zh: '不同意，退出' },
+    continueBtn: { en: 'Continue', zh: '继续答题' },
+    exitTitle: { en: 'Thank you for your time', zh: '感谢你的时间' },
+    exitLead: { en: 'You have chosen not to take part. The questionnaire has ended; no answers have been recorded, and no payment is given.', zh: '你已选择不参加。问卷已结束，不会记录任何答案，也不会获得报酬。' },
+    exitBack: { en: 'Back to the information page', zh: '返回说明页' },
     resumed: { en: 'Welcome back — continuing where you left off.', zh: '欢迎回来，已从上次中断处继续。' },
 
     part1: { en: 'Part 1 · About you and shade facilities', zh: '第一部分 · 个人信息与遮荫设施' },
@@ -249,10 +267,11 @@
     main.replaceChildren();
     sc.render(sc);
     $('bottom').hidden = !!sc.final;
-    $('next').textContent = tr(sc.label || 'next');
+    $('next').textContent = tr(sc.id === 'intro' ? (S.consented ? 'continueBtn' : 'agreeBtn') : (sc.label || 'next'));
     (S.reached || (S.reached = {}))[sc.id] = 1;
     $('back').textContent = tr('back');
     $('back').hidden = backTarget() < 0;
+    if (sc.id === 'intro') { $('back').hidden = false; $('back').textContent = tr('disagreeBtn'); }   // 首页:不同意,退出
     updateNext();
     const t = S.timing[sc.id] || (S.timing[sc.id] = { ms: 0, first: null, views: 0 });
     t.views += 1; t._enter = now();
@@ -282,7 +301,7 @@
   function backTarget() {
     let t = S.idx - 1;
     while (t >= 1 && isLocked(screens[t])) t -= 1;
-    return t >= 1 && !screens[S.idx].final ? t : -1;
+    return t >= 0 && !screens[S.idx].final ? t : -1;          // 可返回首页(说明与同意书)
   }
   function go(t) {
     leave(); S.idx = t; render();
@@ -292,11 +311,22 @@
   function next() {
     const sc = screens[S.idx];
     if (!sc.ok()) return;
+    if (sc.id === 'intro') S.consented = true;               // 点了「我同意并参加」
     let t = Math.min(S.idx + 1, screens.length - 1);
     while (t < screens.length - 1 && isLocked(screens[t])) t += 1;
     go(t);
   }
-  function back() { const t = backTarget(); if (t >= 0) go(t); }
+  function back() {
+    if (screens[S.idx] && screens[S.idx].id === 'intro') { exitSurvey(); return; }   // 首页的左键 = 不同意,退出
+    const t = backTarget(); if (t >= 0) go(t);
+  }
+  // 不同意 / 退出:不提交、不记录任何答案、无报酬;可返回说明页(防误点)
+  function exitSurvey() {
+    leave(); $('bottom').hidden = true;
+    main.replaceChildren(el('h1', { class: 'center' }, tr('exitTitle')), el('p', { class: 'center lead' }, tr('exitLead')),
+      el('p', { class: 'center' }, el('button', { type: 'button', class: 'back review-btn', onclick: () => { render(); window.scrollTo(0, 0); } }, tr('exitBack'))));
+    window.scrollTo(0, 0);
+  }
 
   // ---------- reusable widgets ----------
   function radios(options, values, current, onPick, row = false) {
@@ -410,7 +440,9 @@
       el('h1', {}, tr('introTitle')),
       el('p', { class: 'lead' }, tr('introLead')),
       el('ul', { class: 'plain' }, ...tr('introList').map((x) => el('li', {}, x))),
-      el('p', { class: 'note' }, tr('consent')),
+      el('div', { class: 'consent' }, el('p', { class: 'chead' }, tr('consent')),
+        el('ol', {}, ...tr('consentItems').map((x) => el('li', {}, x))),
+        el('p', { class: 'note' }, el('a', { href: 'pis_en.pdf', target: '_blank', rel: 'noopener' }, tr('pisLink')))),
       CONTACT[S.lang] ? el('p', { class: 'note' }, CONTACT[S.lang]) : null,
       S._resumed ? el('p', { class: 'note' }, tr('resumed')) : null);
   }
@@ -637,7 +669,7 @@
     const A = S.assignA, a = S.answers;
     const pick = (assign, letter) => (letter ? sideOf(assign, letter) : null);
     const out = {
-      v: VERSION, rid: S.rid, lang: S.lang, langSwitches: S.langSwitches,
+      v: VERSION, rid: S.rid, lang: S.lang, langSwitches: S.langSwitches, consent: S.consented ? 1 : 0,
       dur_min: Math.round((Date.now() - Date.parse(S.started)) / 6000) / 10,   // 只记作答用时;不发送开始/提交时刻与任何设备信息
       q0: a.q0, q1: a.q1, q2: a.q2, q3: a.q3, q4: a.q4,
       q5: { letter: a.q5, route: pick(A.q56, a.q5), A: A.q56 },

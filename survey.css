@@ -204,3 +204,6 @@ ul.plain li { margin: 4px 0; }
 .note.frozen { background: #FFF4E5; border-left: 4px solid #F08C00; padding: 8px 12px; border-radius: 8px; color: #7A4A00; }
 .q9time { display: flex; align-items: baseline; gap: 10px; background: var(--card); border: 1.5px solid var(--accent); border-radius: 12px; padding: 10px 14px; margin: 10px 0 6px; }
 .q9time .lab { font-weight: 600; white-space: nowrap; } .q9time .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; } .q9time .which { margin-left: auto; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.consent { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 14px 0; }
+.consent .chead { font-weight: 700; margin: 0 0 6px; } .consent ol { margin: 0 0 8px; padding-left: 20px; } .consent li { margin: 0 0 6px; font-size: 14.5px; line-height: 1.5; }
+.consent a { color: var(--accent); font-weight: 600; }
