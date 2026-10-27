@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1026v53';
+  const VERSION = '1028v54';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -63,6 +63,8 @@
     genderOpts: { en: ['Male', 'Female', 'Prefer not to say'], zh: ['男', '女', '不愿透露'] },
     age: { en: 'Age', zh: '年龄' },
     ageOpts: { en: ['21–24', '25–34', '35–44', '45–54', '55–64'], zh: ['21–24', '25–34', '35–44', '45–54', '55–64'] },
+    nus: { en: 'Are you currently an NUS student or an NUS staff member?', zh: '你目前是 NUS 学生还是 NUS 教职员？' },
+    nusOpts: { en: ['NUS student', 'NUS staff', 'Neither'], zh: ['NUS 学生', 'NUS 教职员', '都不是'] },
 
     q1Title: { en: 'On your usual commute, how often do you come across or use shade facilities like these?', zh: '你平时通勤出行时，大约多频繁会经过或使用这类遮荫设施？' },
     q1Lead: { en: 'Shade facilities: the four types shown below. Tap a photo to enlarge.', zh: '遮荫设施（shade facility）指下面四类。点击照片可放大。' },
@@ -167,7 +169,7 @@
 
   const Q1V = ['every', 'half', 'lesshalf', 'never'], Q2V = ['seek', 'notice', 'rarely'], Q3V = ['yes', 'no'], Q4V = ['yes', 'no'];
   const SHADE_BLOCK = '#16A34A';                          // 第 7 题地图遮荫色块(半透明绿)
-  const GENDER = ['male', 'female', 'na'], AGE = ['21-24', '25-34', '35-44', '45-54', '55-64'];
+  const GENDER = ['male', 'female', 'na'], AGE = ['21-24', '25-34', '35-44', '45-54', '55-64'], NUS = ['student', 'staff', 'neither'];
 
   let C = null;      // content.json
   let S = null;      // respondent state
@@ -235,7 +237,7 @@
   function buildScreens() {
     screens = [
       { id: 'intro', render: rIntro, ok: () => true, label: 'start' },
-      { id: 'q0', render: rQ0, ok: () => S.answers.q0.gender && S.answers.q0.age },
+      { id: 'q0', render: rQ0, ok: () => S.answers.q0.gender && S.answers.q0.age && S.answers.q0.nus },
       { id: 'q1', render: rQ1, ok: () => !!S.answers.q1 },
       { id: 'q2', render: rQ2, ok: () => !!S.answers.q2 },
       { id: 'q3', render: rQ3, ok: () => !!S.answers.q3 },
@@ -451,7 +453,8 @@
     const a = S.answers.q0;
     put(...head(tr('part1'), tr('q0Title')),
       el('div', { class: 'field' }, el('span', { class: 'label' }, tr('gender')), radios(tr('genderOpts'), GENDER, a.gender, (v) => { a.gender = v; }, true)),
-      el('div', { class: 'field' }, el('span', { class: 'label' }, tr('age')), radios(tr('ageOpts'), AGE, a.age, (v) => { a.age = v; }, true)));
+      el('div', { class: 'field' }, el('span', { class: 'label' }, tr('age')), radios(tr('ageOpts'), AGE, a.age, (v) => { a.age = v; }, true)),
+      el('div', { class: 'field' }, el('span', { class: 'label' }, tr('nus')), radios(tr('nusOpts'), NUS, a.nus, (v) => { a.nus = v; }, true)));
   }
 
   // 四类遮荫设施:2 列 × 2 行,图下标英文名(中文界面再加一行中文);点击放大
@@ -726,7 +729,7 @@
     const item = (q, title, ans) => out.push(el('div', { class: 'ritem' }, el('div', { class: 'rq' }, el('b', {}, q + ' '), title), el('div', { class: 'ra' }, ans || '—')));
     const opt = (key, vals, v) => { const i = vals.indexOf(v); return i >= 0 ? tr(key)[i] : null; };
     const q0 = a.q0 || {};
-    item('1.', tr('q0Title'), [opt('genderOpts', GENDER, q0.gender), opt('ageOpts', AGE, q0.age)].filter(Boolean).join(' · '));
+    item('1.', tr('q0Title'), [opt('genderOpts', GENDER, q0.gender), opt('ageOpts', AGE, q0.age), opt('nusOpts', NUS, q0.nus)].filter(Boolean).join(' · '));
     item('2.', tr('q1Title'), opt('q1Opts', Q1V, a.q1));
     item('3.', tr('q2Title'), opt('q2Opts', Q2V, a.q2));
     item('4.', tr('q3Title'), opt('q3Opts', Q3V, a.q3));
