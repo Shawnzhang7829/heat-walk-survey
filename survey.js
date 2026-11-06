@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1106v55';
+  const VERSION = '1106v56';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -681,7 +681,6 @@
         lam_lo: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam_lo : null, lam_hi: a.q9[e.eid] ? e.levels[a.q9[e.eid] - 1].lam_hi : null, trip_m: e.L0 || null,
         pos: S.q9order.indexOf(e.eid) + 1, visits: (S.q9visits[e.eid] || []).length, path: (S.q9visits[e.eid] || []).map((x) => x[0]) }])),
       q8seen: Object.fromEntries(Object.entries(S.seen8).map(([sid, v]) => [sid, { A: new Set(v.A).size, B: new Set(v.B).size }])),
-      timing: Object.fromEntries(Object.entries(S.timing).map(([k, t]) => [k, { ms: t.ms, first: t.first, views: t.views }])),
     };
     out.q7 = {}; out.q8 = {};
     for (const sc of C.scenarios) {
