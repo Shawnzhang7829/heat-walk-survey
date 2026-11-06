@@ -5,7 +5,7 @@
  * Progress is kept in localStorage so a reload resumes where the respondent left off. */
 (() => {
   'use strict';
-  const VERSION = '1028v54';
+  const VERSION = '1106v55';
   const STORE = 'shadewalk_survey_' + VERSION;
   const DONE = 'shadewalk_survey_done';       // 本设备已完成标记:不随版本号变化,问卷更新后也不能重复作答
   const REVIEW = 'shadewalk_survey_review';   // 提交后的只读答案快照(同样不随版本号变化)
@@ -206,12 +206,14 @@
     const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
     return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
   }
+  // 完成页编号:独立随机,与 rid 无关,只在本机显示,不随答卷提交
+  const shortCode = () => [...crypto.getRandomValues(new Uint8Array(4))].map((x) => x.toString(16).padStart(2, '0')).join('').toUpperCase();
   function save() { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { /* storage unavailable: survey still works */ } }
   function load() { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } }
   function isDone() { try { return localStorage.getItem(DONE) === '1'; } catch (e) { return false; } }
   function setDone() {
     try {
-      localStorage.setItem(REVIEW, JSON.stringify({ rid: S.rid, answers: S.answers, assignA: S.assignA, order7: S.order7, q9order: S.q9order }));
+      localStorage.setItem(REVIEW, JSON.stringify({ code: S.code, answers: S.answers, assignA: S.assignA, order7: S.order7, q9order: S.q9order }));
       localStorage.setItem(DONE, '1'); localStorage.removeItem(STORE);
     } catch (e) { }
   }
@@ -224,7 +226,7 @@
     const A = { q56: coin() };
     for (const s of sids) A[s] = coin();
     return {
-      v: VERSION, rid: uuid(), lang, idx: 0, started: new Date().toISOString(), langSwitches: 0,
+      v: VERSION, rid: uuid(), code: shortCode(), lang, idx: 0, started: new Date().toISOString(), langSwitches: 0,
       assignA: A,                        // which true route is shown as "A"
       order7: shuffle(sids),                                // 情境题(1013v37 起 content.json 无情境,第三部分整体删去;代码保留,情境为空时不出现)
       q9order: shuffle(C.q9s.map((e) => e.eid)),            // 第 9 题(显示第 8 题)各例子随机顺序;1013v39 起 3 个例子(加 E3:最大绕行约 30%)
@@ -707,8 +709,8 @@
   }
   function thanks(box) {
     box.replaceChildren(el('div', { class: 'done-icon' }, '✓'), el('h1', { class: 'center' }, tr('thanks')), el('p', { class: 'center lead' }, tr('thanksLead')), el('p', { class: 'center cash' }, tr('cashNote')), el('p', { class: 'center note' }, tr('noShare')),
-      el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, S.rid.slice(0, 8).toUpperCase())),
-      reviewToggle(loadReview() || { rid: S.rid, answers: S.answers, assignA: S.assignA, order7: S.order7, q9order: S.q9order }));
+      el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, S.code)),
+      reviewToggle(loadReview() || { code: S.code, answers: S.answers, assignA: S.assignA, order7: S.order7, q9order: S.q9order }));
   }
   // 只读回答清单
   function reviewToggle(snap) {
@@ -758,7 +760,7 @@
     $('bottom').hidden = true;
     const rv = loadReview();
     main.replaceChildren(...[el('div', { class: 'done-icon' }, '✓'), el('p', { class: 'center' }, tr('already')),
-      rv && rv.rid ? el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, String(rv.rid).slice(0, 8).toUpperCase())) : null,
+      rv && rv.code ? el('p', { class: 'center note' }, `${tr('code')}: `, el('span', { class: 'code' }, rv.code)) : null,
       reviewToggle(rv)].filter(Boolean));                           // 只能查看自己的答案,不提供重新作答入口
   }
 
